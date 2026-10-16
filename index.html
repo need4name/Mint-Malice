@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mint &amp; Malice">
+  <meta name="theme-color" content="#0d0f14">
+  <meta name="format-detection" content="telephone=no">
+  <title>Mint &amp; Malice</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🃏</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-tier="1">
+  <div id="app">
+    <header id="hud">
+      <div class="hud-level">STORE LEVEL <b id="hud-level">1</b></div>
+      <div class="hud-cash">💰 <b id="hud-cash">$500</b></div>
+      <div class="hud-heat" id="hud-heat-wrap">🔥 <b id="hud-heat">0%</b></div>
+      <div id="heatbar"><i></i></div>
+      <div id="hud-day">Day 1</div>
+    </header>
+    <div id="banner" hidden></div>
+
+    <main id="views">
+      <section id="view-shop" class="view active" aria-label="Front Counter"></section>
+      <section id="view-bench" class="view" aria-label="Backroom Bench"></section>
+      <section id="view-web" class="view" aria-label="ScamBay App"></section>
+      <section id="view-tree" class="view" aria-label="Underground Tree"></section>
+    </main>
+
+    <nav id="tabs">
+      <button data-view="shop" aria-current="page"><span>🏪</span>SHOP</button>
+      <button data-view="bench"><span>🧪</span>BENCH</button>
+      <button data-view="web"><span>📱</span>WEB</button>
+      <button data-view="tree"><span>🌳</span>TREE</button>
+    </nav>
+  </div>
+
+  <div id="toasts" aria-live="polite"></div>
+  <div id="modal-root"></div>
+  <div id="pulse"></div>
+
+  <div id="splash">
+    <div class="logo">MINT <span>&amp;</span> MALICE</div>
+    <p>A satirical trading-card shop scam simulator.</p>
+    <p class="muted">Weigh the packs. Pocket the hits. Reseal the rest.<br>Don’t let the Heat reach 100%.</p>
+    <div class="tap">TAP TO OPEN SHOP</div>
+    <p class="fine">All franchises are parodies. Please don’t actually do this.</p>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
