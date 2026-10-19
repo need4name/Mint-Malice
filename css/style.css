@@ -67,8 +67,8 @@ small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; 
 #hud {
   flex: none;
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "lvl cash heat" "bar bar bar" "day day day";
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas: "lvl cash heat help" "bar bar bar bar" "day day day day";
   align-items: center;
   gap: 4px 10px;
   padding: calc(var(--safe-t) + 8px) 14px 8px;
@@ -84,6 +84,18 @@ small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; 
 .hud-cash b { color: var(--mint); font-size: 16px; }
 .hud-heat { grid-area: heat; border-radius: 8px; padding: 2px 6px; }
 .hud-heat b { color: var(--heat); font-size: 16px; }
+#hud-help {
+  grid-area: help;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  font-weight: 900;
+  font-size: 15px;
+  padding: 0;
+}
 #heatbar { grid-area: bar; height: 5px; background: var(--line); border-radius: 3px; overflow: hidden; }
 #heatbar i { display: block; height: 100%; width: 0; background: var(--heat); box-shadow: 0 0 10px var(--heat); transition: width .4s, background .4s; }
 #hud-day { grid-area: day; display: none; }
@@ -417,3 +429,36 @@ h4 { font-size: 15px; margin-bottom: 6px; }
 .tap { margin-top: 30px; padding: 14px 28px; border: 2px solid var(--mint); border-radius: 30px; font-weight: 900; letter-spacing: .1em; color: var(--mint); animation: breathe 1.6s infinite; }
 .fine { position: absolute; bottom: calc(var(--safe-b) + 16px); font-size: 11px; color: var(--muted); }
 @keyframes breathe { 50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(61, 255, 176, .4); } }
+
+/* ---- Tutorial ------------------------------------------------------------------- */
+#coach {
+  flex: none;
+  padding: 10px 14px 12px;
+  background: #13261f;
+  border-bottom: 1px solid rgba(61, 255, 176, .35);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#coach[hidden] { display: none; }
+#coach p { margin: 0; font-size: 14px; line-height: 1.4; }
+#coach p b { color: var(--mint); }
+#coach .btn { align-self: flex-start; }
+.coach-head { display: flex; align-items: baseline; gap: 8px; }
+.coach-head b { flex: 1; font-size: 15px; }
+.coach-step { font-size: 11px; font-weight: 800; letter-spacing: .06em; color: var(--mint); text-transform: uppercase; white-space: nowrap; }
+.coach-skip { border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; padding: 4px; }
+.tut-glow {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid var(--mint) !important;
+  outline-offset: 2px;
+  animation: tutGlow 1.2s ease-in-out infinite;
+}
+@keyframes tutGlow { 50% { box-shadow: 0 0 22px 4px rgba(61, 255, 176, .55); } }
+@media (prefers-reduced-motion: reduce) { .tut-glow { animation: none; } }
+
+.goal { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; font-size: 13px; }
+.goal-row { display: flex; justify-content: space-between; gap: 8px; }
+.goal-bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.goal-bar i { display: block; height: 100%; background: var(--mint); }
