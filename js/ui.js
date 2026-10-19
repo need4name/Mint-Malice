@@ -21,6 +21,9 @@ export function bindActions(root, A) {
 export function toast(msg, kind = 'info', ms = 2600) {
   const box = document.getElementById('toasts');
   if (!box) return;
+  // Sit just below the HUD and any banner or tutorial strip, so toasts never hide them.
+  const strips = ['hud', 'banner', 'coach'].map(id => document.getElementById(id)).filter(el => el && !el.hidden);
+  if (strips.length) box.style.top = `${Math.max(...strips.map(el => el.getBoundingClientRect().bottom)) + 8}px`;
   while (box.children.length >= 3) box.firstChild.remove();
   const el = document.createElement('div');
   el.className = `toast ${kind}`;

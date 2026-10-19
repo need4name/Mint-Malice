@@ -4,9 +4,10 @@ import { SETS, SET_ORDER } from './data.js';
 import { $, toast, modal, haptic, money } from './ui.js';
 import { sfx, unlockAudio, setMuted } from './audio.js';
 import { initShop, showShop, genCustomers } from './shop.js';
-import { initBench, showBench, hideBench } from './bench.js';
+import { initBench, showBench, hideBench, selectStation } from './bench.js';
 import { initWeb, showWeb, newDayListings } from './scambay.js';
 import { initTree, showTree } from './tree.js';
+import { initTutorial, intro, help, tutorialPending, resumeTutorial } from './tutorial.js';
 
 const HUBS = {
   shop: { show: showShop },
@@ -30,6 +31,7 @@ function go(name, force = false) {
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${name}`));
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.view === name ? 'page' : 'false'));
   HUBS[name].show();
+  bus.emit('nav', name);
 }
 
 function hud() {
@@ -129,6 +131,7 @@ function restart() {
   newDayListings();
   changed();
   go('shop', true);
+  intro();
 }
 
 async function endDay() {
@@ -190,6 +193,7 @@ function boot() {
   initBench($('#view-bench'));
   initWeb($('#view-web'));
   initTree($('#view-tree'));
+  initTutorial({ navigate: (view, station) => { go(view); if (station) selectStation(station); } });
 
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { sfx.tap(); go(b.dataset.view); }));
   bus.on('change', hud);
@@ -198,6 +202,7 @@ function boot() {
   bus.on('raid', raid);
   bus.on('endday', endDay);
   bus.on('newgame', restart);
+  $('#hud-help').addEventListener('click', () => { sfx.tap(); help(); });
 
   // Safari: block pinch-zoom of the page itself (canvas handles its own pinch).
   document.addEventListener('gesturestart', e => e.preventDefault());
@@ -217,6 +222,8 @@ function boot() {
     splash.classList.add('out');
     setTimeout(() => splash.remove(), 400);
     if (S.over) gameOver('Your last shop was shut down.');
+    else if (tutorialPending()) intro();
+    else resumeTutorial();
   }, { once: true });
 }
 

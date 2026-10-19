@@ -50,6 +50,8 @@ export function initBench(root) {
   select('weigh');
 }
 
+export function selectStation(name) { select(name); }
+
 function select(name) {
   cur = name;
   input?.reset();
@@ -181,7 +183,7 @@ class Weigh {
     if (d.from === 'tray' && Math.abs(cx - L.sc.x) < L.sc.w / 2 + 12 && cy > L.sc.y - L.ph * 1.5 && cy < L.sc.y + 50) {
       this.scaleId = pk.id;
       if (pk.reading == null) {
-        const sigma = hasUpg('equip1') ? 0.006 : 0.2;
+        const sigma = pk.tut ? 0 : hasUpg('equip1') ? 0.006 : 0.2;
         pk.reading = pk.w + gauss() * sigma;
         changed();
       }

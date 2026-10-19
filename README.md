@@ -20,6 +20,8 @@ GitHub Pages works too. Point it at the repo root.
 
 ## How to play
 
+New players get a short briefing and a 10-step guided tutorial that walks through one full loop: sell, weigh, crack, reseal, resell. Replay it any time from the **?** button in the top bar.
+
 | Hub | What you do |
 | --- | --- |
 | 🏪 **Shop** (Front Counter) | Serve a queue of customers. Each archetype has a different detection risk. Pick which product to hand over, gaslight your way out when caught, run sleight-of-hand swaps on trade-ins, buy stock from the supplier and close up to end the day. |

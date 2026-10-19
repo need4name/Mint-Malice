@@ -3,7 +3,7 @@ import {
   S, bus, changed, earn, spend, addHeat, heatTier, hasUpg, packsOf, removePacks,
   addBox, uid, pick, roll, rand, unlockedSets,
 } from './state.js';
-import { SETS, ARCH, SET_ORDER, HIT_RATE } from './data.js';
+import { SETS, ARCH, SET_ORDER, HIT_RATE, LEVELS } from './data.js';
 import { toast, modal, haptic, money, esc, actions, bindActions } from './ui.js';
 import { sfx } from './audio.js';
 import { resealRisk, forgeryRisk, comboRisk, gaslightChance, riskLabel, riskClass, pickHit } from './rules.js';
@@ -345,11 +345,22 @@ function supplierHtml(a) {
   </div>`;
 }
 
+// Progress toward the next store level: the game's main objective.
+function goalHtml() {
+  const next = LEVELS[S.level];
+  if (!next) return `<div class="goal"><div class="goal-row"><b>🏆 Max store level reached</b></div></div>`;
+  const prev = LEVELS[S.level - 1];
+  const pct = Math.max(0, Math.min(100, ((S.lifetime - prev) / (next - prev)) * 100));
+  return `<div class="goal"><div class="goal-row"><b>🎯 Goal: Store Level ${S.level + 1}</b><span class="muted">${money(S.lifetime)} / ${money(next)} earned</span></div>
+    <div class="goal-bar"><i style="width:${pct}%"></i></div></div>`;
+}
+
 function render() {
   const { A, a } = actions();
   const c = S.queue?.[0];
   const rest = (S.queue || []).slice(1);
   let html = `<div class="hub-head"><h2>🏪 Front Counter</h2><span class="sub">Day ${S.day} · ${S.queue.length} waiting</span></div>`;
+  html += goalHtml();
   html += c ? counterCard(c, a)
     : `<div class="card empty"><p>🌙 No more customers today.</p><p class="muted">Close up shop to start the next day.</p></div>`;
   if (rest.length) {

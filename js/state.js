@@ -32,6 +32,7 @@ function fresh() {
     scams: 0, locked: 0, queue: null,
     today: blankDay(), totals: { revenue: 0, scams: 0, caught: 0, days: 0 },
     muted: false, over: false,
+    tut: null, // tutorial progress: { step, active, done }
   };
 }
 
