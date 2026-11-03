@@ -1,12 +1,12 @@
 // 🏪 Front Counter: customer queue, offers, gaslighting, trade-ins, supplier.
 import {
   S, bus, changed, earn, spend, addHeat, heatTier, hasUpg, packsOf, removePacks,
-  addBox, uid, pick, roll, rand, unlockedSets,
+  order, rollCard, worth, uid, pick, roll, rand, unlockedSets,
 } from './state.js';
-import { SETS, ARCH, SET_ORDER, HIT_RATE, LEVELS } from './data.js';
+import { SETS, ARCH, SET_ORDER, LEVELS, RARITY } from './data.js';
 import { toast, modal, haptic, money, esc, actions, bindActions } from './ui.js';
 import { sfx } from './audio.js';
-import { resealRisk, forgeryRisk, comboRisk, gaslightChance, riskLabel, riskClass, pickHit } from './rules.js';
+import { resealRisk, forgeryRisk, comboRisk, gaslightChance, riskLabel, riskClass } from './rules.js';
 import { swapWheel } from './swap.js';
 
 let root;
@@ -38,8 +38,7 @@ function genCustomer() {
   });
   const name = pick(ARCH[arch].names);
   if ((arch === 'sweat' && roll(0.3)) || (arch === 'timmy' && roll(0.15))) {
-    const h = pickHit(set);
-    return { id: uid(), kind: 'trade', arch, set, name, card: { ...h, set } };
+    return { id: uid(), kind: 'trade', arch, set, name, card: rollCard(set) };
   }
   const want = arch === 'timmy' ? 'pack'
     : arch === 'parent' ? (roll(0.6) ? 'mystery' : 'pack')
@@ -146,7 +145,7 @@ function offersFor(c) {
   }
 
   if (c.kind === 'trade') {
-    const fair = Math.round(c.card.value * 0.6);
+    const fair = Math.round(worth(c.card) * 0.6);
     out.push({ label: `Buy it honestly`, sub: '60% of value', price: -fair, risk: 0, run: async () => {
       if (!spend(fair)) { toast('Not enough cash!', 'bad'); return false; }
       S.singles.push({ id: uid(), ...c.card });
@@ -157,7 +156,7 @@ function offersFor(c) {
     const fakes = [...S.forgeries].sort((a, b) => (a.set === c.set ? -1 : 1) - (b.set === c.set ? -1 : 1) || a.grade - b.grade);
     out.push({
       label: 'Sleight-of-Hand Swap 🤲', sub: fakes.length ? `hand back a replica (${fakes.length} in stock)` : 'need a forgery from the Bench',
-      price: c.card.value, risk: -1, riskText: 'Timing game', scam: true, disabled: !fakes.length,
+      price: worth(c.card), risk: -1, riskText: 'Timing game', scam: true, disabled: !fakes.length,
       run: async () => {
         const arcDeg = 34 + (hasUpg('hustle1') ? 8 : 0) + (hasUpg('hustle3') ? 8 : 0);
         const ok = await swapWheel({ speed: c.arch === 'sweat' ? 4.4 : 3.2, arcDeg });
@@ -167,7 +166,7 @@ function offersFor(c) {
           S.singles.push({ id: uid(), ...c.card });
           S.scams++; S.today.scams++; S.totals.scams++;
           changed();
-          toast(`Swapped! Genuine ${c.card.name} pocketed (${money(c.card.value)}).`, 'good');
+          toast(`Swapped! Genuine ${c.card.name} pocketed (${money(worth(c.card))}).`, 'good');
         } else {
           addHeat(35);
           toast('Caught red-handed! Review bomb incoming. +35% heat', 'bad');
@@ -217,17 +216,17 @@ function offersFor(c) {
   }
 
   if (c.want === 'single') {
-    const real = S.singles.filter(s => s.set === c.set).sort((a, b) => b.value - a.value).slice(0, 3);
+    const real = S.singles.filter(s => s.set === c.set).sort((a, b) => worth(b) - worth(a)).slice(0, 3);
     for (const s of real) {
-      const price = s.value * 1.15;
-      out.push({ label: s.name, sub: 'genuine', price, risk: 0, run: () => attempt(c, {
+      const price = worth(s) * 1.15;
+      out.push({ label: s.name, sub: `${RARITY[s.rarity]?.label || 'Holo'} · genuine`, price, risk: 0, run: () => attempt(c, {
         price, risk: 0, heat: 0, why: '', scam: false,
         onSale: () => { S.singles = S.singles.filter(x => x.id !== s.id); },
       }) });
     }
     const fakes = S.forgeries.filter(f => f.set === c.set).sort((a, b) => b.grade - a.grade).slice(0, 4);
     for (const f of fakes) {
-      const price = f.value * 1.15;
+      const price = worth(f) * 1.15;
       const risk = forgeryRisk(base, f.grade);
       out.push({ label: f.name, sub: `forgery · grade ${f.grade}%`, price, risk, scam: true, run: async () => {
         if (f.grade < 65) {
@@ -316,7 +315,7 @@ function stockHtml() {
   const cell = (s, cat) => packsOf(s, cat).length;
   const rows = sets.map(s => `<tr><th>${SETS[s].name}</th>
     <td>${cell(s, 'sealed')}</td><td>${cell(s, 'heavy')}</td><td>${cell(s, 'dud')}</td><td>${cell(s, 'open')}</td><td>${cell(s, 'reseal')}</td></tr>`).join('');
-  const singlesVal = S.singles.reduce((t, x) => t + x.value, 0);
+  const singlesVal = S.singles.reduce((t, x) => t + worth(x), 0);
   const fakeAvg = S.forgeries.length ? Math.round(avg(S.forgeries.map(f => f.grade))) : 0;
   return `<h3>📦 Stock</h3>
     <div class="card"><table class="stock">
@@ -331,18 +330,39 @@ function stockHtml() {
     </div>`;
 }
 
+// Distributors allocate a limited number of boxes per day, and orders arrive next morning.
+export const allocation = () => 1 + S.level;
+const orderedToday = set => S.deliveries.filter(d => d.from === 'supplier' && d.set === set && d.orderedDay === S.day).length;
+
 function supplierHtml(a) {
-  const buy = (cost, fn, msg) => a(() => { if (spend(cost)) { fn(); changed(); sfx.cash(); toast(msg, 'info'); } else toast('Not enough cash!', 'bad'); });
+  const buy = (cost, item, msg) => a(() => {
+    if (!spend(cost)) { toast('Not enough cash!', 'bad'); return; }
+    order({ ...item, from: 'supplier', orderedDay: S.day, arrive: S.day + 1, paid: cost });
+    changed();
+    sfx.cash();
+    toast(`${msg} Arrives tomorrow morning.`, 'info');
+  });
   const boxes = SET_ORDER.map(s => {
     const set = SETS[s];
     if (set.unlock > S.level) return `<button class="sup" disabled><span>🔒 ${set.name} box</span><small>Store Level ${set.unlock}</small></button>`;
-    return `<button class="sup" data-a="${buy(set.boxCost, () => addBox(s), `${set.name} box (10 packs) delivered.`)}">
-      <span>📦 ${set.name} box</span><small>10 packs · retail ${money(set.packPrice)}/pack</small><b>${money(set.boxCost)}</b></button>`;
+    const left = allocation() - orderedToday(s);
+    return `<button class="sup" ${left > 0 ? '' : 'disabled'} data-a="${buy(set.boxCost, { kind: 'box', set: s, qty: 1, label: `${set.name} box` }, `${set.name} box ordered.`)}">
+      <span>📦 ${set.name} box</span><small>10 packs · ~${Math.round(set.hitRate * 100)}% hit rate · ${left > 0 ? `${left} left in today’s allocation` : 'sold out until tomorrow'}</small><b>${money(set.boxCost)}</b></button>`;
   }).join('');
   return `<h3>🚚 Supplier</h3><div class="card supplier">${boxes}
-    <button class="sup" data-a="${buy(10, () => { S.commons += 50; }, '50 bulk commons delivered.')}"><span>🃏 Bulk commons ×50</span><small>mystery box filler & pack weights</small><b>$10</b></button>
-    <button class="sup" data-a="${buy(60, () => { S.blanks += 5; }, '5 sheets of blank cardstock delivered.')}"><span>📄 Blank cardstock ×5</span><small>for the forgery bench</small><b>$60</b></button>
+    <button class="sup" data-a="${buy(10, { kind: 'commons', qty: 50, label: '50 bulk commons' }, '50 bulk commons ordered.')}"><span>🃏 Bulk commons ×50</span><small>mystery box filler & pack weights</small><b>$10</b></button>
+    <button class="sup" data-a="${buy(60, { kind: 'blanks', qty: 5, label: '5 blank cardstock' }, '5 sheets of cardstock ordered.')}"><span>📄 Blank cardstock ×5</span><small>for the forgery bench</small><b>$60</b></button>
+    <p class="muted small">Orders arrive tomorrow morning. Distributors allocate ${allocation()} box${allocation() > 1 ? 'es' : ''} per set per day.</p>
   </div>`;
+}
+
+function incomingHtml() {
+  if (!S.deliveries.length) return '';
+  const rows = [...S.deliveries].sort((x, y) => x.arrive - y.arrive).map(d => {
+    const when = d.arrive <= S.day + 1 ? 'tomorrow' : `day ${d.arrive}`;
+    return `<li><span>${d.kind === 'box' ? '📦' : d.kind === 'commons' ? '🃏' : d.kind === 'blanks' ? '📄' : '💎'} ${esc(d.label)}</span><i>${when}</i></li>`;
+  }).join('');
+  return `<h3>🚚 Incoming</h3><ul class="queue incoming">${rows}</ul>`;
 }
 
 // Progress toward the next store level: the game's main objective.
@@ -368,9 +388,9 @@ function render() {
       q.kind === 'refund' ? '😡 refund' : q.kind === 'trade' ? '🔁 trade-in' : { pack: 'packs', mystery: 'mystery box', single: 'singles', box: 'sealed box' }[q.want]
     }</i></li>`).join('')}</ul>`;
   }
+  html += incomingHtml();
   html += stockHtml();
   html += supplierHtml(a);
-  html += `<p class="muted center small">Pack odds: ~${Math.round(HIT_RATE * 100)}% contain a foil hit.</p>`;
   html += `<div class="thumb-bar"><button class="btn big danger" data-a="${a(() => bus.emit('endday'))}">🔒 Close Shop · End Day ${S.day}</button></div>`;
   root.innerHTML = html;
   bindActions(root, A);

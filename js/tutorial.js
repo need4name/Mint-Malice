@@ -1,7 +1,9 @@
 // Guided first-play tutorial: a coach strip under the HUD walks the player through
 // one full scam loop (sell → weigh → crack → crimp → resell), advancing on real game events.
 import { S, bus, changed, packCat, addBox, uid, heatTier } from './state.js';
-import { HEAVY, LEVELS } from './data.js';
+import { SETS, LEVELS } from './data.js';
+
+const CHOKE = SETS.choke.weights;
 import { $, modal, money } from './ui.js';
 import { sfx } from './audio.js';
 
@@ -34,7 +36,7 @@ function ensurePacks() {
   if (sealed.length < 2) { addBox('choke'); sealed = S.packs.filter(p => packCat(p) === 'sealed'); }
   const first = sealed[0];
   first.hit = true;
-  first.w = HEAVY;
+  first.w = CHOKE.heavy;
   first.reading = null;
   first.tut = true; // reads exactly heavy on the scale, no noise
   if (S.commons < 1) S.commons = 5;
@@ -63,7 +65,7 @@ const STEPS = [
   },
   {
     title: 'Sort it',
-    text: `Around <b>${HEAVY}g = heavy</b> (has a hit). Around <b>20.9g = dud</b>. This one reads heavy, so <b>drag it into the 💎 HEAVY bin</b>.`,
+    text: `For Chokémon packs, about <b>${CHOKE.heavy}g = heavy</b> (has a hit) and <b>${CHOKE.light}g = dud</b>. Other sets weigh differently; the reference is under the scale. This one reads heavy, so <b>drag it into the 💎 HEAVY bin</b>.`,
     view: 'bench', station: 'weigh',
     done: b => count.sorted() > b.sorted,
   },
@@ -93,12 +95,12 @@ const STEPS = [
   },
   {
     title: 'Grow the shop',
-    text: `The card you pulled is worth money. Sell it to a collector here or list it on <b>📱 WEB</b>. Spend profits in <b>🌳 TREE</b> on upgrades. Later, try forging fake cards on the Bench.`,
+    text: `The card you pulled is worth money. Sell it to a collector here, or list it on <b>📱 WEB</b> (listings sell overnight). Restock from the Supplier or ScamBay auctions: <b>orders arrive the next morning</b>. Spend profits in <b>🌳 TREE</b> on upgrades.`,
     button: 'Got it',
   },
   {
     title: 'End the day',
-    text: 'When the queue is empty (or you’re done), tap <b>Close Shop</b> to end the day. Rent is due every night.',
+    text: 'When you’ve served everyone and used your stock, tap <b>Close Shop</b>. Overnight, auctions close, listings sell, deliveries arrive and prices move. Rent is due every night.',
     view: 'shop', target: '.thumb-bar .btn',
     done: b => count.day() > b.day,
   },
@@ -219,7 +221,7 @@ export async function help() {
     title: 'How to play',
     body: `<p><b>Goal:</b> reach Store Level 5 by earning revenue${next ? ` (next level at ${money(next)} lifetime, you have ${money(S.lifetime)})` : ''}. Don’t let 🔥 Heat hit 100%.</p>
       <ol class="howto">
-        <li><b>🧪 Bench → Weigh:</b> drag packs onto the scale. ~${HEAVY}g = heavy (hit inside).</li>
+        <li><b>🧪 Bench → Weigh:</b> drag packs onto the scale. Heavier than the set’s dud weight = hit inside.</li>
         <li><b>Crack:</b> swipe across a heavy pack’s top to steal the card.</li>
         <li><b>Crimp:</b> drag the iron along the seam steadily to reseal it.</li>
         <li><b>🏪 Shop:</b> sell resealed packs to kids, stolen cards to collectors.</li>

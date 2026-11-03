@@ -1,5 +1,4 @@
 // Detection maths shared by the counter, ScamBay and live breaks.
-import { SETS } from './data.js';
 import { clamp, hasUpg } from './state.js';
 
 // Chance a resealed pack is spotted. q = crimp quality 0-100.
@@ -34,12 +33,3 @@ export function riskLabel(p) {
   return `${Math.max(1, Math.round(p * 100))}% risk`;
 }
 export const riskClass = p => (p <= 0 ? 'none' : p < 0.1 ? 'low' : p < 0.35 ? 'mid' : 'high');
-
-// Random chase card from a set, cheap cards far more common than grails.
-export function pickHit(set) {
-  const hits = SETS[set].hits;
-  const w = hits.map(h => 1 / Math.pow(h.value, 0.9));
-  let r = Math.random() * w.reduce((a, b) => a + b, 0);
-  for (let i = 0; i < hits.length; i++) { r -= w[i]; if (r <= 0) return hits[i]; }
-  return hits[0];
-}

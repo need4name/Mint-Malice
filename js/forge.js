@@ -1,7 +1,7 @@
 // 🎨 Card Forgery Engine — 3-step touch canvas:
 // 1. Foil Centering (drag / pinch / two-finger rotate)  2. Texture Emboss (rub)
 // 3. Artificial Aging (sponge the edges to the set's era wear grade).
-import { S, changed, addHeat, hasUpg, artSkill, unlockedSets, uid, clamp, rand } from './state.js';
+import { S, changed, addHeat, hasUpg, artSkill, unlockedSets, uid, clamp, rand, worth } from './state.js';
 import { SETS, WEAR } from './data.js';
 import { drawCard, rr, text, bench } from './draw.js';
 import { toast, haptic, money } from './ui.js';
@@ -20,9 +20,9 @@ export class Forge {
   templates() {
     const out = [];
     for (const s of unlockedSets()) {
-      for (const h of SETS[s].hits) {
-        out.push({ ...h, set: s });
-        if (hasUpg('art3')) out.push({ ...h, set: s, name: `${h.name} ★`, value: h.value * 2, secret: true });
+      for (const c of SETS[s].cards) {
+        if (c.rarity === 'secret' && !hasUpg('art3')) continue; // Secret Rares need 3D texturing
+        out.push({ ...c, set: s });
       }
     }
     return out;
@@ -163,7 +163,7 @@ export class Forge {
     const grade = Math.round(clamp(base * agingFactor, 0, 100));
     const slab = hasUpg('art4') && grade >= 90;
     const f = {
-      id: uid(), set: j.tpl.set, art: j.tpl.art, secret: !!j.tpl.secret,
+      id: uid(), set: j.tpl.set, art: j.tpl.art, rarity: j.tpl.rarity,
       name: slab ? `${j.tpl.name} [GSA 10]` : j.tpl.name,
       value: j.tpl.value * (slab ? 2 : 1), grade, slab,
     };
@@ -222,8 +222,8 @@ export class Forge {
 
     if (this.step === 'select' || !j) {
       const tp = this.tpl();
-      drawCard(ctx, cx, cy, cw, ch, tp, { glow: tp.secret ? '#ff3dff' : '#ffd23d' });
-      text(ctx, `${tp.name} · street value ${money(tp.value)}`, W / 2, H * 0.08, { size: 14, weight: 800, color: '#ffd23d' });
+      drawCard(ctx, cx, cy, cw, ch, tp, { glow: tp.rarity === 'secret' ? '#ff3dff' : '#ffd23d' });
+      text(ctx, `${tp.name} · street value ${money(worth(tp))}`, W / 2, H * 0.08, { size: 14, weight: 800, color: '#ffd23d' });
       text(ctx, `Era wear: ${WEAR[SETS[tp.set].wear].label} (${SETS[tp.set].year}) · Art Skill ${artSkill()}`, W / 2, H * 0.84, { size: 12, color: '#c8cede', weight: 600 });
       return;
     }

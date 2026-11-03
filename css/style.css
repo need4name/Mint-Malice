@@ -462,3 +462,15 @@ h4 { font-size: 15px; margin-bottom: 6px; }
 .goal-row { display: flex; justify-content: space-between; gap: 8px; }
 .goal-bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .goal-bar i { display: block; height: 100%; background: var(--mint); }
+
+/* ---- Day cycle & ScamBay v2 ---------------------------------------------------------- */
+.incoming li i { white-space: nowrap; }
+.report-h { margin: 14px 0 6px; font-size: 14px; }
+.report { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.stars { color: var(--gold); font-weight: 700; }
+.post > small { display: block; margin-bottom: 8px; }
+.post-foot { flex-wrap: wrap; }
+.listing.col { flex-direction: column; align-items: stretch; gap: 8px; }
+.listing .row { display: flex; gap: 10px; align-items: center; }
+.ctrl-row.tiers .btn { flex: 1; padding: 8px 6px; font-size: 13px; }
+.rating-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }

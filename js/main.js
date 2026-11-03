@@ -1,11 +1,11 @@
 // Boot, navigation hubs, HUD, day cycle, heat escalation and raids.
-import { S, bus, load, newGame, wipe, save, changed, heatTier, hasUpg, blankDay } from './state.js';
+import { S, bus, load, newGame, wipe, save, changed, heatTier, hasUpg, blankDay, driftMarket, receiveDeliveries } from './state.js';
 import { SETS, SET_ORDER } from './data.js';
-import { $, toast, modal, haptic, money } from './ui.js';
+import { $, toast, modal, haptic, money, esc } from './ui.js';
 import { sfx, unlockAudio, setMuted } from './audio.js';
 import { initShop, showShop, genCustomers } from './shop.js';
 import { initBench, showBench, hideBench, selectStation } from './bench.js';
-import { initWeb, showWeb, newDayListings } from './scambay.js';
+import { initWeb, showWeb, newDayLots, closeDay } from './scambay.js';
 import { initTree, showTree } from './tree.js';
 import { initTutorial, intro, help, tutorialPending, resumeTutorial } from './tutorial.js';
 
@@ -128,10 +128,22 @@ function restart() {
   newGame();
   setMuted(S.muted);
   S.queue = genCustomers();
-  newDayListings();
+  newDayLots();
   changed();
   go('shop', true);
   intro();
+}
+
+// Morning report: what arrived and how prices moved.
+async function morning(arrived, moves) {
+  if (!arrived.length && !moves.length) return;
+  await modal({
+    title: `☀️ Day ${S.day}`,
+    body: `${arrived.length ? `<h4 class="report-h">🚚 Delivered this morning</h4><ul class="report">${arrived.map(d => `<li>${esc(d.label)}</li>`).join('')}</ul>` : ''}
+      ${moves.length ? `<h4 class="report-h">📈 Market news</h4><ul class="report">${moves.map(m => `<li class="${m.pct > 0 ? 'good' : 'bad'}">${SETS[m.set].name} cards ${m.pct > 0 ? 'up' : 'down'} ${Math.abs(m.pct)}% overnight</li>`).join('')}</ul>` : ''}
+      <p class="muted small">${S.queue.length} customers are waiting. Fresh ScamBay lots are up.</p>`,
+    buttons: [{ label: 'Open the shop', value: true, kind: 'mint' }],
+  });
 }
 
 async function endDay() {
@@ -145,6 +157,8 @@ async function endDay() {
     if (!ok) return;
   }
   const t = S.today;
+  // Overnight: auctions close and online listings sell (or get caught).
+  const web = closeDay();
   const rent = 40 * S.level;
   S.cash -= rent;
   const tierBefore = heatTier();
@@ -157,7 +171,7 @@ async function endDay() {
   if (S.heat > 80) await raid();
   if (S.over) return;
 
-  const broke = S.cash < 0 && !S.packs.length && !S.singles.length && !S.forgeries.length;
+  const broke = S.cash < 0 && !S.packs.length && !S.singles.length && !S.forgeries.length && !S.deliveries.length;
   if (broke) { await gameOver('You’re in debt with nothing left to sell. The landlord changes the locks.'); return; }
 
   await modal({
@@ -171,16 +185,20 @@ async function endDay() {
       <li><span>Heat today</span><b class="${t.heat > 0 ? 'bad' : 'good'}">${t.heat > 0 ? '+' : ''}${Math.round(t.heat)}%</b></li>
       <li><span>Overnight cooling</span>${cool ? `<b class="good">−${cool}%</b>` : tierBefore >= 3 ? '<b class="bad">none at Severe — buy PR</b>' : '<b>—</b>'}</li>
       ${released ? `<li><span>ScamBay released held funds</span><b class="good">${money(released)}</b></li>` : ''}
-      <li><span>Cash</span><b class="${S.cash < 0 ? 'bad' : ''}">${money(S.cash)}</b></li></ul>`,
+      <li><span>Cash</span><b class="${S.cash < 0 ? 'bad' : ''}">${money(S.cash)}</b></li></ul>
+      ${web.length ? `<h4 class="report-h">📱 ScamBay overnight</h4><ul class="report">${web.map(l => `<li class="${l.good ? 'good' : l.bad ? 'bad' : ''}">${esc(l.text)}</li>`).join('')}</ul>` : ''}`,
     buttons: [{ label: `Open Day ${S.day + 1} ☀️`, value: true, kind: 'mint' }],
   });
 
   S.day++;
   S.totals.days++;
   S.today = blankDay();
+  const moves = driftMarket();
+  const arrived = receiveDeliveries();
   S.queue = genCustomers();
-  newDayListings();
+  newDayLots();
   changed();
+  await morning(arrived, moves);
   go('shop', true);
 }
 
