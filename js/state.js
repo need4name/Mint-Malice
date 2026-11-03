@@ -1,5 +1,5 @@
 // Mutable game state, persistence, and the small event bus every hub listens to.
-import { SETS, SET_ORDER, HEAVY, LIGHT, PACKS_PER_BOX, HIT_RATE, LEVELS, ART_BONUS } from './data.js';
+import { SETS, SET_ORDER, PACKS_PER_BOX, LEVELS, ART_BONUS, RARITY } from './data.js';
 
 const KEY = 'mint-malice-save-v1';
 
@@ -33,6 +33,10 @@ function fresh() {
     today: blankDay(), totals: { revenue: 0, scams: 0, caught: 0, days: 0 },
     muted: false, over: false,
     tut: null, // tutorial progress: { step, active, done }
+    market: { choke: 1, yuno: 1, tragic: 1 }, // daily price multiplier per set
+    deliveries: [], // { id, arrive (day), label, kind: box|commons|blanks|single|fake, set, qty, stripped, card }
+    web: { lots: [], listings: [], rating: 100, streamed: false, day: 0 },
+    news: [], // overnight headlines for the morning report
   };
 }
 
@@ -67,16 +71,73 @@ export function wipe() { try { localStorage.removeItem(KEY); } catch (e) { /* ig
 export function changed() { save(); bus.emit('change'); }
 
 // ---- Packs ----------------------------------------------------------------
-export function makePack(set, hit = Math.random() < HIT_RATE) {
+export function makePack(set, hit = Math.random() < SETS[set].hitRate) {
+  const { light, heavy } = SETS[set].weights;
   return {
     id: uid(), set, hit,
-    w: (hit ? HEAVY : LIGHT) + gauss() * 0.012,
+    w: (hit ? heavy : light) + gauss() * 0.012,
     reading: null, sorted: 'none', opened: false, resealed: false, crimp: null, short: false,
   };
 }
 export function addBox(set, opts = {}) {
   for (let i = 0; i < PACKS_PER_BOX; i++) S.packs.push(makePack(set, opts.stripped ? false : undefined));
 }
+// ---- Cards & market --------------------------------------------------------
+const weightedPick = (items, weight) => {
+  let r = Math.random() * items.reduce((t, x) => t + weight(x), 0);
+  for (const x of items) { r -= weight(x); if (r <= 0) return x; }
+  return items[0];
+};
+
+// A random chase card from a set: rarity tier first, then card, then a possible variant.
+export function rollCard(set, rarity = null) {
+  const def = SETS[set];
+  const tier = rarity || weightedPick(Object.keys(RARITY), k => RARITY[k].odds);
+  const pool = def.cards.filter(c => c.rarity === tier);
+  const base = weightedPick(pool, c => 1 / c.value);
+  const variant = def.variants.find(v => Math.random() < v.odds) || null;
+  return {
+    id: uid(), set, art: base.art, rarity: tier,
+    name: variant ? `${base.name} (${variant.name})` : base.name,
+    value: Math.round(base.value * (variant ? variant.mult : 1)),
+  };
+}
+
+// What a card fetches today: its base value moved by the set's market.
+export const worth = card => Math.round(card.value * (S.market?.[card.set] ?? 1));
+
+export function driftMarket() {
+  const moves = [];
+  for (const set of SET_ORDER) {
+    const before = S.market[set] ?? 1;
+    let m = before * (1 + gauss() * 0.06);
+    if (Math.random() < 0.08) m *= Math.random() < 0.5 ? 0.75 : 1.35; // hype spike or crash
+    S.market[set] = Math.round(clamp(m, 0.6, 1.6) * 100) / 100;
+    const pct = Math.round((S.market[set] / before - 1) * 100);
+    if (Math.abs(pct) >= 10) moves.push({ set, pct });
+  }
+  return moves;
+}
+
+// ---- Deliveries -----------------------------------------------------------------
+export function order(item) {
+  S.deliveries.push({ id: uid(), ...item });
+}
+
+// Unpack everything due today; returns labels for the morning report.
+export function receiveDeliveries() {
+  const due = S.deliveries.filter(d => d.arrive <= S.day);
+  S.deliveries = S.deliveries.filter(d => d.arrive > S.day);
+  for (const d of due) {
+    if (d.kind === 'box') for (let i = 0; i < (d.qty || 1); i++) addBox(d.set, { stripped: d.stripped });
+    if (d.kind === 'commons') S.commons += d.qty;
+    if (d.kind === 'blanks') S.blanks += d.qty;
+    if (d.kind === 'single') S.singles.push(d.card);
+    if (d.kind === 'fake') S.forgeries.push(d.card);
+  }
+  return due;
+}
+
 // sealed (unweighed) | dud | heavy | open (awaiting crimp) | reseal
 export function packCat(p) {
   if (p.resealed) return 'reseal';

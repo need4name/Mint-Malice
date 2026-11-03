@@ -26,8 +26,23 @@ New players get a short briefing and a 10-step guided tutorial that walks throug
 | --- | --- |
 | 🏪 **Shop** (Front Counter) | Serve a queue of customers. Each archetype has a different detection risk. Pick which product to hand over, gaslight your way out when caught, run sleight-of-hand swaps on trade-ins, buy stock from the supplier and close up to end the day. |
 | 🧪 **Bench** (Backroom) | The scam pipeline on a full-bleed canvas: **Weigh** (drag packs onto the scale, then sort them into the heavy or dud bin) → **Crack** (swipe across the crimp, pocket the hit) → **Crimp** (drag the heat iron along the seam; too fast = loose, too slow = burnt) → **Forge** (align the foil with drag/pinch/twist, rub to emboss, sponge the edges to age the card). |
-| 📱 **Web** (ScamBay) | Tap-bid on wholesale boxes (some sellers already searched them…), list singles, forgeries and resealed packs, and run live-stream "breaks". |
+| 📱 **Web** (ScamBay) | A fresh batch of wholesale lots each morning: set a max bid, and the winners ship in 1–2 days. Low-rated sellers are cheap but may send searched boxes or fake singles. List items in limited slots at Quick, Market or Greedy prices. Run one live-stream "break" a day. |
 | 🌳 **Tree** (Underground) | Four-tier upgrade branches (Equipment, Art, Hustle), plus PR cover-ups, a corrupt lawyer on retainer, and settings. |
+
+**The day is the turn.** Customers are finite each day, and everything that brings in stock or money happens overnight:
+
+* Supplier orders arrive the next morning. Distributors allocate a limited number of boxes per set per day.
+* ScamBay auctions close when you end the day, and won lots ship in 1–2 days.
+* ScamBay listings may sell overnight. Cheaper asks and a higher seller rating sell faster. A buyer who spots a fake files a claim: you get no money, your rating drops and Heat rises.
+* Card prices drift each day per set, with the occasional hype spike or crash.
+
+**Sets and cards.** Each set has its own pack weights and hit rate, and later sets have a smaller gap between a dud and a hit. The reference weights are shown under the scale. Each set has 8 chase cards across Holo, Ultra and Secret rarities, plus variants such as 1st Edition, Shadowless, Ghost Rare, Alpha and Misprint that multiply value.
+
+| Set | Dud | Hit | Hit rate |
+| --- | --- | --- | --- |
+| Chokémon | 20.88g | 21.45g | 22% |
+| Y-U-No-Pay | 18.62g | 18.98g | 18% |
+| Tragic: The Hoarding | 26.10g | 26.36g | 14% |
 
 **Forgery grade** = Alignment × 0.40 + Texture × 0.35 + Art Skill × 0.25. That total is then multiplied by an aging-match factor (a mismatch of more than ±8 wear points costs up to 40%).
 At ≥ 90% a forgery fools grading houses. From 65% to 89% it fools parents and casual buyers. Below 65% it fails instantly, triggering a chargeback and +25% heat.

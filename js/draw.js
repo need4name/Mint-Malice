@@ -1,5 +1,5 @@
 // Canvas drawing primitives shared by the bench stations.
-import { SETS } from './data.js';
+import { SETS, RARITY } from './data.js';
 
 export function rr(ctx, x, y, w, h, r) {
   r = Math.min(r, w / 2, h / 2);
@@ -142,7 +142,7 @@ export function drawCard(ctx, cx, cy, w, h, card, o = {}) {
   ctx.fillRect(ax, ty, aw, h * 0.25);
   const fs = Math.max(6, w * 0.05);
   text(ctx, set.name, ax + aw / 2, ty + h * 0.06, { size: fs, color: '#5a4a2a', weight: 700 });
-  text(ctx, card.secret ? '★ SECRET RARE ★' : '1st Edition · Holo Rare', ax + aw / 2, ty + h * 0.13, { size: fs, color: '#5a4a2a', weight: 500 });
+  text(ctx, RARITY[card.rarity]?.label || 'Holo Rare', ax + aw / 2, ty + h * 0.13, { size: fs, color: '#5a4a2a', weight: 500 });
   text(ctx, `©${set.year} Parody Wizards of the Toast`, ax + aw / 2, ty + h * 0.2, { size: fs * 0.8, color: '#8a7a5a', weight: 400 });
   if (o.tint) {
     ctx.globalAlpha = (o.alpha ?? 1) * 0.35;

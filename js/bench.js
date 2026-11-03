@@ -1,12 +1,11 @@
 // 🧪 Backroom Bench: full-bleed canvas hosting the scam pipeline stations
 // (Weigh & Scan → Crack & Strip → Crimp & Reseal) plus the Forgery Engine.
-import { S, bus, changed, packCat, hasUpg, gauss, uid, clamp } from './state.js';
-import { SETS, HEAVY, LIGHT } from './data.js';
+import { S, bus, changed, packCat, hasUpg, gauss, clamp, rollCard, worth } from './state.js';
+import { SETS, RARITY } from './data.js';
 import { attachInput } from './input.js';
 import { bench, drawPack, drawCard, rr, text } from './draw.js';
 import { toast, haptic, money, actions, bindActions } from './ui.js';
 import { sfx } from './audio.js';
-import { pickHit } from './rules.js';
 import { Forge } from './forge.js';
 
 let canvas, ctx, wrap, ctrlEl, hintEl, tabsEl, input;
@@ -122,7 +121,7 @@ function emptyMsg(ctx, W, H, msg, sub) {
 class Weigh {
   constructor() { this.drag = null; this.scaleId = null; this.readAt = 0; }
 
-  enter() { api.hint(`Drag a pack onto the scale, then into a bin. Heavy ≈ ${HEAVY}g (foil) · Light ≈ ${LIGHT}g (dud).`); }
+  enter() { api.hint('Drag a pack onto the scale, then into a bin. Each set weighs differently: check the reference under the scale.'); }
 
   onScale() {
     const p = this.scaleId && find(this.scaleId);
@@ -240,6 +239,12 @@ class Weigh {
     const digits = hasUpg('equip1') ? 2 : 1;
     text(ctx, `${shown.toFixed(digits)} g`, sc.x, sc.y + 31, { size: 18, weight: 700, color: '#62ff9a' });
     text(ctx, hasUpg('equip1') ? 'DIGITAL GRAM SCALE' : 'KITCHEN SCALE ±0.2g', sc.x, sc.y + 62, { size: 9, color: '#8a93a6', weight: 600 });
+    // Reference weights for whichever set is on (or next to) the scale.
+    const refPack = s || this.tray()[0];
+    if (refPack) {
+      const set = SETS[refPack.set];
+      text(ctx, `${set.name.toUpperCase()}: dud ≈ ${set.weights.light.toFixed(2)}g · hit ≈ ${set.weights.heavy.toFixed(2)}g`, sc.x, sc.y + 78, { size: 10, color: '#ffd23d', weight: 700 });
+    }
     if (s && (!this.drag || this.drag.id !== s.id)) {
       const xray = hasUpg('equip3') && s.hit;
       drawPack(ctx, sc.x - L.pw / 2, sc.y - L.ph, L.pw, L.ph, s, { glow: xray ? '#ff3dff' : null });
@@ -322,14 +327,14 @@ class Crack {
     let card;
     const hit = pk.hit;
     if (hit) {
-      const h = pickHit(pk.set);
-      card = { id: uid(), set: pk.set, name: h.name, value: h.value, art: h.art };
+      card = rollCard(pk.set);
       S.singles.push(card);
       pk.hit = false;
-      if (S.commons > 0) { S.commons--; pk.w = LIGHT + gauss() * 0.012; } // bulk common swapped in
-      else { pk.short = true; pk.w = LIGHT - 1.7; }
+      const { light, heavy } = SETS[pk.set].weights;
+      if (S.commons > 0) { S.commons--; pk.w = light + gauss() * 0.012; } // bulk common swapped in
+      else { pk.short = true; pk.w = light - (heavy - light) * 2; }
       setTimeout(() => sfx.success(), 250);
-      toast(`HIT! ${card.name} (${money(card.value)}) stashed${pk.short ? ' — no commons to swap in, pack is light!' : '. Bulk common swapped in.'}`, 'good');
+      toast(`${RARITY[card.rarity].label.toUpperCase()}! ${card.name} (${money(worth(card))}) stashed${pk.short ? ' — no commons to swap in, pack is light!' : '. Bulk common swapped in.'}`, 'good');
     } else {
       card = { set: pk.set, name: 'Bulk Commons', value: 0, art: '🃏' };
       toast(pk.sorted === 'heavy' ? 'Dud! The scale lied… just commons.' : 'Just commons. Off to the crimper.', 'info');
@@ -357,7 +362,7 @@ class Crack {
       const cy = L.y + L.ph * 0.55 - k * L.ph * 0.55;
       drawCard(ctx, W / 2, cy, cw, ch, this.reveal.card, { glow: this.reveal.hit ? '#ffd23d' : null, holo: this.reveal.hit });
       drawPack(ctx, L.x, L.y + L.ph * 0.35, L.pw, L.ph * 0.65, pk, { openTop: true });
-      const msg = this.reveal.hit ? `💎 ${this.reveal.card.name} · ${money(this.reveal.card.value)}` : '🃏 Commons only';
+      const msg = this.reveal.hit ? `💎 ${this.reveal.card.name} · ${money(worth(this.reveal.card))}` : '🃏 Commons only';
       text(ctx, msg, W / 2, Math.min(L.y + L.ph + 22, H * 0.86), { size: 15, weight: 800, color: this.reveal.hit ? '#ffd23d' : '#c8cede' });
       return;
     }
