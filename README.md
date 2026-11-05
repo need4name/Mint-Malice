@@ -36,7 +36,7 @@ New players get a short briefing and a 10-step guided tutorial that walks throug
 * ScamBay listings may sell overnight. Cheaper asks and a higher seller rating sell faster. A buyer who spots a fake files a claim: you get no money, your rating drops and Heat rises.
 * Card prices drift each day per set, with the occasional hype spike or crash.
 
-**Sets and cards.** There are five sets. Each has 10–12 original cards with procedurally drawn artwork (`js/art.js`), each franchise has its own card layout (`js/cardface.js`), and the rosters are in `js/cards.js`:
+**Sets and cards.** There are five sets with 104 original cards in total (20–24 per set), satirising the hobby itself: scalpers, graders, influencers, "investors", power creep and reprints. Every card has procedurally drawn artwork (`js/art.js`), each franchise has its own card layout (`js/cardface.js`), and the rosters are in `js/cards.js`:
 
 | Set | Store level | Layout | Dud | Hit | Hit rate |
 | --- | --- | --- | --- | --- | --- |
