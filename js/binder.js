@@ -1,7 +1,8 @@
 // 💎 Binder: your singles and forgeries. Trim centering, or send cards off for grading.
 // Grades come back after a few days; a slab multiplies value. Graders catch trims and fakes.
-import { S, changed, spend, addHeat, uid, worstShare, roll, clamp, hasUpg, worth, pick } from './state.js';
-import { RARITY } from './data.js';
+import { S, bus, changed, spend, addHeat, uid, worstShare, roll, clamp, hasUpg, worth, pick, cardDef, variantOf } from './state.js';
+import { RARITY, SETS, SET_ORDER } from './data.js';
+import { cardImage } from './cardface.js';
 import { trimCard, UNDERSIZED } from './games/trim.js';
 import { toast, modal, money, esc } from './ui.js';
 import { sfx } from './audio.js';
@@ -13,21 +14,72 @@ const TIERS = {
 
 const centering = c => (c.lr == null ? '' : `${Math.max(c.lr, 100 - c.lr)}/${Math.min(c.lr, 100 - c.lr)}`);
 
+const thumb = (c, a) => `<button class="thumb-btn" aria-label="View ${esc(c.name)}" data-a="${a(() => view(c))}"><img class="thumb" src="${cardImage(c, 44)}" alt=""></button>`;
+
 export function binderHtml(a) {
+  markDex();
   const rows = [];
   for (const c of S.singles) {
-    rows.push(`<li><div class="grow"><b>${esc(c.name)}</b><small>${RARITY[c.rarity]?.label || 'Holo'} · ${c.gsa ? (c.gsa === 'A' ? 'GSA Altered' : `GSA ${c.gsa}`) : `centering ${centering(c)}`}${c.trimmed ? ` · trimmed ${c.trimmed}mm${c.trimmed > UNDERSIZED ? ' (undersized!)' : ''}` : ''} · ${money(worth(c))}</small></div>
+    rows.push(`<li>${thumb(c, a)}<div class="grow"><b>${esc(c.name)}</b><small>${RARITY[c.rarity]?.label || 'Holo'} · ${c.gsa ? (c.gsa === 'A' ? 'GSA Altered' : `GSA ${c.gsa}`) : `centering ${centering(c)}`}${c.trimmed ? ` · trimmed ${c.trimmed}mm${c.trimmed > UNDERSIZED ? ' (undersized!)' : ''}` : ''} · ${money(worth(c))}</small></div>
       ${c.gsa ? '' : `<button class="btn small" data-a="${a(() => trim(c))}">✂️ Trim</button><button class="btn small" data-a="${a(() => submit(c, 'single'))}">🏅 Grade</button>`}</li>`);
   }
   for (const f of S.forgeries) {
-    rows.push(`<li class="fake"><div class="grow"><b>${esc(f.name)}</b><small>forgery · grade ${f.grade}% · ${money(worth(f))}</small></div>
+    rows.push(`<li class="fake">${thumb(f, a)}<div class="grow"><b>${esc(f.name)}</b><small>forgery · grade ${f.grade}% · ${money(worth(f))}</small></div>
       ${f.gsa || f.slab ? '' : `<button class="btn small" data-a="${a(() => submit(f, 'forgery'))}">🏅 Sneak in</button>`}</li>`);
   }
   const away = S.grading.map(g => `<li><span>🏅 ${esc(g.card.name)}</span><i>${g.back <= S.day + 1 ? 'tomorrow' : `day ${g.back}`}</i></li>`).join('');
-  if (!rows.length && !away) return '';
-  return `<h3>💎 Binder</h3>
-    ${rows.length ? `<ul class="binder">${rows.join('')}</ul>` : ''}
+  const total = SET_ORDER.reduce((t, s) => t + SETS[s].cards.length, 0);
+  return `<div class="binder-head"><h3>💎 Binder</h3><button class="btn small" data-a="${a(cardIndex)}">📖 Card index ${Object.keys(S.dex).length}/${total}</button></div>
+    ${rows.length ? `<ul class="binder">${rows.join('')}</ul>` : '<p class="muted small">No cards yet. Crack heavy packs on the Bench to pull some.</p>'}
     ${away ? `<h3>🏅 At the grader</h3><ul class="queue incoming">${away}</ul>` : ''}`;
+}
+
+// Mark every card you hold as collected in the index.
+function markDex() {
+  for (const c of S.singles) {
+    const def = cardDef(c);
+    if (def) S.dex[`${c.set}:${def.name}`] = true;
+  }
+}
+export function trackDex() { bus.on('change', markDex); markDex(); }
+
+// A big view of one card.
+function view(c) {
+  const def = cardDef(c);
+  const v = variantOf(c);
+  const body = document.createElement('div');
+  body.className = 'card-view';
+  body.innerHTML = `<img src="${cardImage(c, 260)}" alt="${esc(c.name)}">
+    <ul class="stats">
+      <li><span>Set</span><b>${esc(SETS[c.set].name)}</b></li>
+      <li><span>Rarity</span><b>${RARITY[c.rarity]?.label || 'Common'}${v ? ` · ${esc(v)}` : ''}</b></li>
+      ${c.grade ? `<li><span>Forgery grade</span><b class="bad">${c.grade}%</b></li>` : ''}
+      ${c.lr != null && !c.gsa ? `<li><span>Centering</span><b>${centering(c)}</b></li>` : ''}
+      <li><span>Worth today</span><b class="good">${money(worth(c))}</b></li>
+    </ul>`;
+  if (!def) body.querySelector('ul').insertAdjacentHTML('beforeend', '<li><span>Note</span><b>Retired card</b></li>');
+  modal({ title: c.name, body, buttons: [{ label: 'Close', value: true }] });
+}
+
+// Every card in every set; ones you've never owned show as card backs.
+function cardIndex() {
+  const body = document.createElement('div');
+  body.className = 'dex';
+  let cur = SET_ORDER[0];
+  const draw = () => {
+    const set = SETS[cur];
+    const got = set.cards.filter(c => S.dex[`${cur}:${c.name}`]).length;
+    body.innerHTML = `<div class="seg wrap">${SET_ORDER.map(id => `<button class="${id === cur ? 'on' : ''}" data-set="${id}">${SETS[id].short}</button>`).join('')}</div>
+      <p class="muted small">${esc(set.name)} (${set.year}) · ${got}/${set.cards.length} collected${set.unlock > S.level ? ` · stocked from Store Level ${set.unlock}` : ''}</p>
+      <div class="dex-grid">${set.cards.map(d => {
+        const own = S.dex[`${cur}:${d.name}`];
+        const card = { set: cur, base: d.name, name: d.name, rarity: d.rarity };
+        return `<figure class="${own ? '' : 'unknown'}"><img src="${cardImage(card, 72, { unknown: !own })}" alt=""><figcaption>${own ? esc(d.name) : '???'}</figcaption></figure>`;
+      }).join('')}</div>`;
+    body.querySelectorAll('[data-set]').forEach(b => b.addEventListener('click', () => { sfx.tap(); cur = b.dataset.set; draw(); }));
+  };
+  draw();
+  modal({ title: '📖 Card index', body, buttons: [{ label: 'Close', value: true }] });
 }
 
 async function trim(card) {

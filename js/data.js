@@ -1,4 +1,5 @@
 // Static game data: parody sets, customer archetypes, upgrade trees, tuning constants.
+import { ROSTERS } from './cards.js';
 
 export const PACKS_PER_BOX = 10;
 
@@ -16,7 +17,7 @@ export const RARITY = {
 // smaller gap between a dud and a hit, so a cheap kitchen scale stops being enough.
 export const SETS = {
   choke: {
-    id: 'choke', name: 'Chokémon', short: 'CHOKÉ', year: 1999, wear: 'LP', unlock: 1,
+    id: 'choke', name: 'Chokémon', short: 'CHOKÉ', style: 'choke', code: 'BS', flagship: 'Fire Lizard', year: 1999, wear: 'LP', unlock: 1,
     color: '#f2c230', color2: '#ff8a3d', frame: '#f2c94c', mascot: '⚡',
     boxCost: 60, packPrice: 9, hitRate: 0.22,
     weights: { light: 20.88, heavy: 21.45 },
@@ -26,19 +27,9 @@ export const SETS = {
       { name: 'Shadowless', odds: 0.08, mult: 1.6 },
       { name: 'Misprint', odds: 0.02, mult: 3 },
     ],
-    cards: [
-      { name: 'Sleepy Blob', rarity: 'holo', value: 25, art: '😴' },
-      { name: 'Soggy Turtle', rarity: 'holo', value: 45, art: '🐢' },
-      { name: 'Leafy Toad', rarity: 'holo', value: 35, art: '🐸' },
-      { name: 'Clefairy-ish', rarity: 'holo', value: 30, art: '🧚' },
-      { name: 'Yellow Rat', rarity: 'ultra', value: 120, art: '🐭' },
-      { name: 'Ghastly Gas Bag', rarity: 'ultra', value: 95, art: '👻' },
-      { name: 'Fire Lizard', rarity: 'secret', value: 340, art: '🦎' },
-      { name: 'Mew-Two-Much', rarity: 'secret', value: 280, art: '🧬' },
-    ],
   },
   yuno: {
-    id: 'yuno', name: 'Y-U-No-Pay', short: 'Y-U-NO', year: 2002, wear: 'NM', unlock: 2,
+    id: 'yuno', name: 'Y-U-No-Pay', short: 'Y-U-NO', style: 'yuno', code: 'LOD', flagship: 'Blue-Eyes Shiny Dragon', year: 2002, wear: 'NM', unlock: 2,
     color: '#2f6bff', color2: '#8a3dff', frame: '#c27a3a', mascot: '👁️',
     boxCost: 90, packPrice: 13, hitRate: 0.18,
     weights: { light: 18.62, heavy: 18.98 },
@@ -47,19 +38,9 @@ export const SETS = {
       { name: '1st Edition', odds: 0.15, mult: 1.8 },
       { name: 'Ghost Rare', odds: 0.03, mult: 4 },
     ],
-    cards: [
-      { name: "Exodia's Left Pinky", rarity: 'holo', value: 40, art: '🦴' },
-      { name: 'Kuriboh-Not', rarity: 'holo', value: 35, art: '🐹' },
-      { name: 'Mirror Farce', rarity: 'holo', value: 50, art: '🪞' },
-      { name: 'Pot of Greedier', rarity: 'holo', value: 70, art: '🏺' },
-      { name: 'Time Wizard of Accounting', rarity: 'ultra', value: 130, art: '⏳' },
-      { name: 'Dark Magician Intern', rarity: 'ultra', value: 160, art: '🧙' },
-      { name: 'Red-Eyes Dark Lizard', rarity: 'secret', value: 260, art: '🐊' },
-      { name: 'Blue-Eyes Shiny Dragon', rarity: 'secret', value: 450, art: '🐉' },
-    ],
   },
   tragic: {
-    id: 'tragic', name: 'Tragic: The Hoarding', short: 'TRAGIC', year: 1993, wear: 'MP', unlock: 3,
+    id: 'tragic', name: 'Tragic: The Hoarding', short: 'TRAGIC', style: 'tragic', code: 'α', flagship: 'Obsidian Lotus', year: 1993, wear: 'MP', unlock: 3,
     color: '#b04cff', color2: '#4a2a8a', frame: '#1d1b22', mascot: '🔮',
     boxCost: 140, packPrice: 20, hitRate: 0.14,
     weights: { light: 26.1, heavy: 26.36 },
@@ -69,19 +50,33 @@ export const SETS = {
       { name: 'Foil', odds: 0.12, mult: 1.8 },
       { name: 'Misprint', odds: 0.03, mult: 2.5 },
     ],
-    cards: [
-      { name: 'Counterfeit Spell', rarity: 'holo', value: 60, art: '📜' },
-      { name: 'Lightning Bill', rarity: 'holo', value: 75, art: '⚡' },
-      { name: 'Dark Rituel', rarity: 'holo', value: 55, art: '🕯️' },
-      { name: 'Misprinted Mana Elf', rarity: 'holo', value: 90, art: '🧝' },
-      { name: 'Moxie Emerald', rarity: 'ultra', value: 300, art: '💚' },
-      { name: 'Overpriced Dragon', rarity: 'ultra', value: 240, art: '🐲' },
-      { name: 'Time Spiral Staircase', rarity: 'secret', value: 700, art: '🌀' },
-      { name: 'Obsidian Lotus', rarity: 'secret', value: 1500, art: '🌺' },
-    ],
   },
 };
-export const SET_ORDER = ['choke', 'yuno', 'tragic'];
+SETS.gutter = {
+  id: 'gutter', name: 'Chokémon: Neon Gutter', short: 'GUTTER', style: 'choke', code: 'NG', flagship: 'Gutter Dragon', year: 2001, wear: 'NM', unlock: 4,
+  color: '#ff3d9a', color2: '#3d1a6a', frame: '#2a2440', mascot: '🌃',
+  boxCost: 110, packPrice: 16, hitRate: 0.2,
+  weights: { light: 19.4, heavy: 19.82 },
+  blurb: 'The city expansion: bin rats, kebab rabbits and a dragon living in the storm drains.',
+  variants: [
+    { name: 'Reverse Holo', odds: 0.15, mult: 1.5 },
+    { name: 'Error Stamp', odds: 0.03, mult: 2.5 },
+  ],
+};
+SETS.cryptid = {
+  id: 'cryptid', name: 'Cryptid Clash', short: 'CRYPTID', style: 'cryptid', code: 'CC', flagship: 'Mothman', year: 2004, wear: 'LP', unlock: 5,
+  color: '#7a9a3a', color2: '#1a2a12', frame: '#c9b48a', mascot: '👣',
+  boxCost: 160, packPrice: 22, hitRate: 0.12,
+  weights: { light: 22.7, heavy: 22.92 },
+  blurb: 'Case files on the unexplained. Blurry, unverified and wildly overpriced.',
+  variants: [
+    { name: 'Blurry Photo', odds: 0.1, mult: 2 },
+    { name: 'Classified', odds: 0.03, mult: 3.5 },
+  ],
+};
+for (const [id, cards] of Object.entries(ROSTERS)) SETS[id].cards = cards;
+
+export const SET_ORDER = ['choke', 'yuno', 'tragic', 'gutter', 'cryptid'];
 
 // Target edge wear (0-100) the aging step must match, keyed by the set's era.
 export const WEAR = {

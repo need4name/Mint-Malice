@@ -33,7 +33,8 @@ function fresh() {
     today: blankDay(), totals: { revenue: 0, scams: 0, caught: 0, days: 0 },
     muted: false, over: false,
     tut: null, // tutorial progress: { step, active, done }
-    market: { choke: 1, yuno: 1, tragic: 1 }, // daily price multiplier per set
+    market: { choke: 1, yuno: 1, tragic: 1, gutter: 1, cryptid: 1 }, // daily price multiplier per set
+    dex: {}, // card index: 'set:Card Name' -> true once you've owned one
     deliveries: [], // { id, arrive (day), label, kind: box|commons|blanks|single|fake, set, qty, stripped, card }
     web: { lots: [], listings: [], rating: 100, streamed: false, day: 0 },
     news: [], // overnight headlines for the morning report
@@ -101,11 +102,22 @@ export function rollCard(set, rarity = null) {
   const variant = def.variants.find(v => Math.random() < v.odds) || null;
   const off = () => Math.round(clamp(50 + (Math.random() < 0.5 ? -1 : 1) * Math.abs(gauss()) * 8, 30, 70));
   return {
-    id: uid(), set, art: base.art, rarity: tier,
+    id: uid(), set, rarity: tier, base: base.name, variant: variant ? variant.name : null,
     name: variant ? `${base.name} (${variant.name})` : base.name,
     value: Math.round(base.value * (variant ? variant.mult : 1)),
     lr: off(), tb: off(), // centering: left and top border share, 50 = perfect
   };
+}
+
+// The roster entry behind a card (by base name; older saves only have the display name).
+export function cardDef(card) {
+  const cards = SETS[card.set]?.cards || [];
+  return cards.find(c => c.name === card.base) || cards.find(c => card.name?.startsWith(c.name)) || null;
+}
+export function variantOf(card) {
+  if (card.variant !== undefined) return card.variant;
+  const m = /\(([^)]+)\)/.exec(card.name || '');
+  return m && SETS[card.set]?.variants.some(v => v.name === m[1]) ? m[1] : null;
 }
 
 // Centering: the worse axis decides. Raw cards are priced by centering; graded slabs by grade.

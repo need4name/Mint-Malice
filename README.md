@@ -36,13 +36,17 @@ New players get a short briefing and a 10-step guided tutorial that walks throug
 * ScamBay listings may sell overnight. Cheaper asks and a higher seller rating sell faster. A buyer who spots a fake files a claim: you get no money, your rating drops and Heat rises.
 * Card prices drift each day per set, with the occasional hype spike or crash.
 
-**Sets and cards.** Each set has its own pack weights and hit rate, and later sets have a smaller gap between a dud and a hit. The reference weights are shown under the scale. Each set has 8 chase cards across Holo, Ultra and Secret rarities, plus variants such as 1st Edition, Shadowless, Ghost Rare, Alpha and Misprint that multiply value.
+**Sets and cards.** There are five sets. Each has 10–12 original cards with procedurally drawn artwork (`js/art.js`), each franchise has its own card layout (`js/cardface.js`), and the rosters are in `js/cards.js`:
 
-| Set | Dud | Hit | Hit rate |
-| --- | --- | --- | --- |
-| Chokémon | 20.88g | 21.45g | 22% |
-| Y-U-No-Pay | 18.62g | 18.98g | 18% |
-| Tragic: The Hoarding | 26.10g | 26.36g | 14% |
+| Set | Store level | Layout | Dud | Hit | Hit rate |
+| --- | --- | --- | --- | --- | --- |
+| Chokémon (1999) | 1 | HP, type, attack, flavour text | 20.88g | 21.45g | 22% |
+| Y-U-No-Pay (2002) | 2 | Level stars, ATK/DEF, monster/spell/trap frames | 18.62g | 18.98g | 18% |
+| Tragic: The Hoarding (1993) | 3 | Mana cost, type line, rules text, power/toughness | 26.10g | 26.36g | 14% |
+| Chokémon: Neon Gutter (2001) | 4 | Neon city expansion | 19.40g | 19.82g | 20% |
+| Cryptid Clash (2004) | 5 | Case-file dossiers with threat level and habitat | 22.70g | 22.92g | 12% |
+
+Each card has a Holo, Ultra or Secret rarity. Variants such as 1st Edition, Shadowless, Misprint, Ghost Rare, Alpha, Foil, Reverse Holo, Error Stamp, Blurry Photo and Classified change both a card's value and how it looks. Graded cards are shown in a slab. The 📖 Card index in the Binder tracks which cards you've owned.
 
 **Minigames**
 
@@ -93,6 +97,11 @@ js/tree.js            Underground upgrade tree & services
 js/input.js           touchstart/move/end (+ mouse) → canvas pointers, multi-touch
 js/audio.js           Web Audio synth SFX, unlocked on first gesture
 js/draw.js            canvas primitives (packs, cards, workbench)
+js/art.js             procedural card illustrations (bodies, extras, backdrops)
+js/cardface.js        franchise card layouts, variants, slabs, bitmap cache
+js/cards.js           card rosters for all five sets
+js/binder.js          binder, card viewer, card index, grading
+js/games/             minigames on a shared overlay
 ```
 
 Safari specifics: the viewport is locked with `100dvh` and `user-scalable=no`, and `gesturestart` is suppressed so the page itself never zooms. Canvas touch handlers are non-passive and call `preventDefault`. Web Audio is unlocked with a silent buffer on the first tap. `navigator.vibrate` isn't available on iOS, so haptics fall back to a screen pulse plus a low audio thump.

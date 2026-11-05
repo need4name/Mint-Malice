@@ -356,7 +356,7 @@ class Crack {
       setTimeout(() => sfx.success(), 250);
       toast(`${RARITY[card.rarity].label.toUpperCase()}! ${card.name} (${money(worth(card))}) stashed. The pack is now light: balance it before resealing.`, 'good');
     } else {
-      card = { set: pk.set, name: 'Bulk Commons', value: 0, art: '🃏' };
+      card = { set: pk.set, name: 'Bulk Common', rarity: 'common', value: 0, spec: { b: 'blob', c: ['#c8c0b0', '#eee8dc'], e: 'dot', bg: 'normal' } };
       toast(pk.sorted === 'heavy' ? 'Dud! The scale lied… just commons.' : 'Just commons. Off to the crimper.', 'info');
     }
     if (steam) pk.steam = steam;

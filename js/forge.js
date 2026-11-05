@@ -163,7 +163,7 @@ export class Forge {
     const grade = Math.round(clamp(base * agingFactor, 0, 100));
     const slab = hasUpg('art4') && grade >= 90;
     const f = {
-      id: uid(), set: j.tpl.set, art: j.tpl.art, rarity: j.tpl.rarity,
+      id: uid(), set: j.tpl.set, base: j.tpl.name, rarity: j.tpl.rarity,
       name: slab ? `${j.tpl.name} [GSA 10]` : j.tpl.name,
       value: j.tpl.value * (slab ? 2 : 1), grade, slab,
     };

@@ -6,7 +6,7 @@ import { sfx, unlockAudio, setMuted } from './audio.js';
 import { initShop, showShop, genCustomers } from './shop.js';
 import { initBench, showBench, hideBench, selectStation } from './bench.js';
 import { initWeb, showWeb, newDayLots, closeDay, handleReturns } from './scambay.js';
-import { receiveGrading } from './binder.js';
+import { receiveGrading, trackDex } from './binder.js';
 import { raidCleanup } from './games/raid.js';
 import { initTree, showTree } from './tree.js';
 import { initTutorial, intro, help, tutorialPending, resumeTutorial } from './tutorial.js';
@@ -235,6 +235,7 @@ function boot() {
   initBench($('#view-bench'));
   initWeb($('#view-web'));
   initTree($('#view-tree'));
+  trackDex();
   initTutorial({ navigate: (view, station) => { go(view); if (station) selectStation(station); } });
 
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { sfx.tap(); go(b.dataset.view); }));
