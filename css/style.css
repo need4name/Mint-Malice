@@ -474,3 +474,80 @@ h4 { font-size: 15px; margin-bottom: 6px; }
 .listing .row { display: flex; gap: 10px; align-items: center; }
 .ctrl-row.tiers .btn { flex: 1; padding: 8px 6px; font-size: 13px; }
 .rating-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+
+/* ---- Minigame overlays ------------------------------------------------------------- */
+.game-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 75;
+  background: rgba(8, 10, 14, .97);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--safe-t) + 8px) 12px calc(var(--safe-b) + 8px);
+  touch-action: none;
+  animation: fadeIn .2s;
+}
+.game-overlay.out { opacity: 0; transition: opacity .25s; }
+.game-overlay.alarm { background: rgba(40, 4, 14, .97); }
+.game-box { width: min(100%, 500px); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.game-head h3 { margin: 0; font-size: 19px; color: var(--text); text-transform: none; letter-spacing: 0; }
+.game-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
+.game-stage { align-self: center; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #17110d; }
+.game-stage canvas { display: block; touch-action: none; }
+.game-hud:empty { display: none; }
+.game-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.game-btns .btn { flex: 1 1 140px; min-height: 48px; }
+.game-dom { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+
+/* Duel */
+.duel { display: flex; flex-direction: column; gap: 10px; }
+.meter { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+.meter .bar { flex: 1; height: 10px; background: var(--line); border-radius: 5px; position: relative; overflow: hidden; }
+.meter .bar i { display: block; height: 100%; background: var(--malice); transition: width .3s; }
+.meter .bar b { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--mint); }
+.meter em { font-style: normal; width: 38px; text-align: right; }
+.duel-round { margin: 0; font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.duel-q { margin: 0; font-size: 18px; font-weight: 700; font-style: italic; }
+.timer { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.timer i { display: block; height: 100%; background: var(--gold); }
+.duel-a { display: flex; flex-direction: column; gap: 8px; }
+.duel-a .btn { text-align: left; min-height: 50px; font-weight: 600; }
+.duel-flash { margin: 0; min-height: 18px; font-size: 13px; font-weight: 800; color: var(--malice); }
+
+/* Stream */
+.stream-game { display: flex; flex-direction: column; gap: 10px; }
+.meters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.meters .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.meters .bar i { display: block; height: 100%; background: var(--mint); width: 0; }
+.meters .bar.bad i { background: var(--malice); }
+.ripping { font-size: 14px; min-height: 20px; }
+.chat2 { display: flex; flex-direction: column; gap: 6px; min-height: 280px; }
+.cmsg { display: flex; align-items: center; gap: 8px; background: #0a0c10; border-radius: 10px; padding: 6px 8px; font-size: 13px; animation: toastIn .2s; }
+.cmsg span { flex: 1; min-width: 0; }
+.cmsg b { color: #9b8aff; }
+.cmsg.sus { border: 1px solid rgba(255, 61, 110, .5); }
+.cmsg.spread { background: rgba(255, 61, 110, .2); }
+.cmsg.handled { opacity: .45; }
+.cmsg button { border: 0; background: var(--panel2); border-radius: 8px; min-width: 40px; min-height: 36px; font-size: 18px; }
+
+/* Reviews */
+.review { display: flex; flex-direction: column; gap: 12px; }
+.review-card { background: #fff; color: #222; border-radius: 12px; padding: 12px; min-height: 90px; }
+.stars-5 { color: #f5a623; font-size: 18px; letter-spacing: 2px; }
+.review-card p { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.review-card .placed { border: 0; background: #eef1f6; color: #222; border-radius: 6px; padding: 4px 6px; font-size: 14px; }
+.tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.tile { border: 1px solid var(--line); background: var(--panel2); border-radius: 8px; padding: 8px 10px; font-size: 13px; min-height: 40px; }
+
+/* Counter, bench, binder additions */
+.offer-row { display: flex; gap: 6px; align-items: stretch; }
+.offer-row .offer { flex: 1; min-width: 0; }
+.haggle { flex: none; width: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); font-size: 20px; }
+.ctrl-col { display: flex; flex-direction: column; gap: 6px; }
+.binder { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.binder li { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.binder li.fake { border-color: rgba(255, 61, 110, .3); }
+.binder .btn.small { padding: 6px 8px; min-height: 36px; font-size: 12px; }

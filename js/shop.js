@@ -4,9 +4,14 @@ import {
   order, rollCard, worth, uid, pick, roll, rand, unlockedSets,
 } from './state.js';
 import { SETS, ARCH, SET_ORDER, LEVELS, RARITY } from './data.js';
-import { toast, modal, haptic, money, esc, actions, bindActions } from './ui.js';
+import { toast, haptic, money, esc, actions, bindActions } from './ui.js';
 import { sfx } from './audio.js';
-import { resealRisk, forgeryRisk, comboRisk, gaslightChance, riskLabel, riskClass } from './rules.js';
+import { resealRisk, forgeryRisk, comboRisk, gaslightChance, riskLabel, riskClass, trimRisk } from './rules.js';
+import { haggle, haggleLimit } from './games/haggle.js';
+import { kidPick } from './games/kidpick.js';
+import { duel } from './games/duel.js';
+import { distraction } from './games/distract.js';
+import { binderHtml } from './binder.js';
 import { swapWheel } from './swap.js';
 
 let root;
@@ -68,28 +73,19 @@ function line(c) {
 const avg = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 // ---- Sale resolution -------------------------------------------------------
-async function caught(c, heat, why) {
+async function caught(c, heat, why, kind = 'reseal') {
   sfx.fail();
   haptic([60, 40, 60], 'bad');
   S.totals.caught++;
-  const buttons = [{ label: '"It\'s a <b>Misprint Error</b> — ultra rare!"', value: 'misprint' }];
-  if (hasUpg('hustle1')) {
-    buttons.push({ label: '"Your scale\'s uncalibrated, mate."', value: 'scale' });
-    buttons.push({ label: '"Everyone knows factory packs vary."', value: 'factory' });
-  }
-  buttons.push({ label: 'Apologise & refund', value: 'refund', kind: 'ghost' });
-  const v = await modal({
-    title: `${ARCH[c.arch].emoji} Busted?`,
-    body: `<p>${esc(c.name)} ${why}</p><p class="muted">Talk your way out, or eat the refund.</p>`,
-    buttons,
-    cls: 'bad',
-  });
-  if (v === 'refund') {
+  toast(`${c.name} ${why}`, 'bad', 3500);
+  const pro = c.arch === 'sweat' || c.arch === 'streamer';
+  const res = await duel({ name: c.name, kind, start: pro ? 62 : 52, pro: hasUpg('hustle1') });
+  if (res === 'refund') {
     addHeat(Math.round(heat / 2));
     toast(`Refunded. They'll still tell their mates. +${Math.round(heat / 2)}% heat`, 'bad');
     return false;
   }
-  if (roll(gaslightChance(c.arch, v))) {
+  if (res === 'saved') {
     addHeat(3);
     sfx.success();
     toast('Gaslit successfully. The sale stands. +3% heat', 'good');
@@ -100,9 +96,13 @@ async function caught(c, heat, why) {
   return false;
 }
 
-async function attempt(c, { price, risk, heat, why, scam, onSale }) {
+// Haggling sets a multiplier for the next sale.
+let haggleMult = 1;
+
+async function attempt(c, { price, risk, heat, why, scam, onSale, kind }) {
+  price *= haggleMult;
   if (risk > 0 && roll(risk)) {
-    const saved = await caught(c, heat, why);
+    const saved = await caught(c, heat, why, kind);
     if (!saved) return true;
   }
   onSale();
@@ -158,7 +158,8 @@ function offersFor(c) {
       label: 'Sleight-of-Hand Swap 🤲', sub: fakes.length ? `hand back a replica (${fakes.length} in stock)` : 'need a forgery from the Bench',
       price: worth(c.card), risk: -1, riskText: 'Timing game', scam: true, disabled: !fakes.length,
       run: async () => {
-        const arcDeg = 34 + (hasUpg('hustle1') ? 8 : 0) + (hasUpg('hustle3') ? 8 : 0);
+        const bonus = await distraction();
+        const arcDeg = 34 + bonus + (hasUpg('hustle1') ? 8 : 0) + (hasUpg('hustle3') ? 8 : 0);
         const ok = await swapWheel({ speed: c.arch === 'sweat' ? 4.4 : 3.2, arcDeg });
         const fake = fakes[0];
         S.forgeries = S.forgeries.filter(f => f.id !== fake.id);
@@ -188,14 +189,35 @@ function offersFor(c) {
       const risk = cat === 'reseal' ? comboRisk(chosen.map(p => resealRisk(base, p.crimp, p.short))) : 0;
       const sub = cat === 'reseal' ? `crimp ${Math.round(avg(chosen.map(p => p.crimp)))}%`
         : cat === 'dud' ? 'technically legal' : cat === 'heavy' ? 'giving away a hit' : '';
-      out.push({ label: `${c.qty}× ${label}`, sub, price, risk, scam: cat === 'reseal', run: () => attempt(c, {
-        price, risk, heat: c.arch === 'timmy' ? 6 : 10, scam: cat === 'reseal',
-        why: 'turns the pack over. "Why is the seal all crinkly?!"',
-        onSale: () => {
-          removePacks(chosen);
-          if (cat === 'heavy') { addHeat(-2); toast('They pulled a holo at the counter! Free hype. -2% heat', 'good'); }
-        },
-      }) });
+      out.push({ label: `${c.qty}× ${label}`, sub, price, risk, scam: cat === 'reseal', run: async () => {
+        // Kids sometimes insist on picking their own pack, right next to your heavy stock.
+        const heavy = packsOf(c.set, 'heavy');
+        if (c.arch === 'timmy' && cat !== 'heavy' && heavy.length && !c.tut && roll(0.4)) {
+          const res = await kidPick({ set: c.set });
+          if (res === 'caught') {
+            addHeat(8);
+            toast('The kid saw you swap packs and runs to tell their mum. +8% heat', 'bad');
+            return true;
+          }
+          if (res === 'lost') {
+            removePacks([heavy[0]]);
+            const got = earn(price * haggleMult);
+            S.today.served++;
+            addHeat(-2);
+            toast(`The kid grabbed your heavy pack and pulled a hit! ${money(got)}, free hype. -2% heat`, 'info');
+            return true;
+          }
+          toast('The kid picked a dud. Phew.', 'good');
+        }
+        return attempt(c, {
+          price, risk, heat: c.arch === 'timmy' ? 6 : 10, scam: cat === 'reseal', kind: 'reseal',
+          why: 'turns the pack over. "Why is the seal all crinkly?!"',
+          onSale: () => {
+            removePacks(chosen);
+            if (cat === 'heavy') { addHeat(-2); toast('They pulled a holo at the counter! Free hype. -2% heat', 'good'); }
+          },
+        });
+      } });
     }
   }
 
@@ -208,7 +230,7 @@ function offersFor(c) {
     ];
     for (const [label, price, risk, scam] of tiers) {
       out.push({ label: `Mystery box · ${label}`, sub: ok ? '12 bulk commons' : 'need 12 bulk commons', price, risk, scam, disabled: !ok, run: () => attempt(c, {
-        price, risk, heat: 8, scam,
+        price, risk, heat: 8, scam, kind: 'mystery',
         why: 'peeks inside. "This is twelve bulk commons. For HOW much?"',
         onSale: () => { S.commons -= 12; },
       }) });
@@ -219,16 +241,17 @@ function offersFor(c) {
     const real = S.singles.filter(s => s.set === c.set).sort((a, b) => worth(b) - worth(a)).slice(0, 3);
     for (const s of real) {
       const price = worth(s) * 1.15;
-      out.push({ label: s.name, sub: `${RARITY[s.rarity]?.label || 'Holo'} · genuine`, price, risk: 0, run: () => attempt(c, {
-        price, risk: 0, heat: 0, why: '', scam: false,
+      const risk = trimRisk(base, s);
+      out.push({ label: s.name, sub: `${s.gsa ? `GSA ${s.gsa} · ` : ''}${RARITY[s.rarity]?.label || 'Holo'} · ${s.trimmed ? 'trimmed' : 'genuine'}`, price, risk, scam: risk > 0, run: () => attempt(c, {
+        price, risk, heat: 12, why: 'pulls out a ruler. "This card has been trimmed!"', scam: risk > 0, kind: 'trim',
         onSale: () => { S.singles = S.singles.filter(x => x.id !== s.id); },
       }) });
     }
     const fakes = S.forgeries.filter(f => f.set === c.set).sort((a, b) => b.grade - a.grade).slice(0, 4);
     for (const f of fakes) {
       const price = worth(f) * 1.15;
-      const risk = forgeryRisk(base, f.grade);
-      out.push({ label: f.name, sub: `forgery · grade ${f.grade}%`, price, risk, scam: true, run: async () => {
+      const risk = forgeryRisk(base, f.grade, f.slab);
+      out.push({ label: f.name, sub: `forgery · grade ${f.grade}%${f.slab ? ' · slabbed' : ''}`, price, risk, scam: true, run: async () => {
         if (f.grade < 65) {
           S.forgeries = S.forgeries.filter(x => x.id !== f.id);
           S.totals.caught++;
@@ -238,7 +261,7 @@ function offersFor(c) {
           return true;
         }
         return attempt(c, {
-          price, risk, heat: 20, scam: true,
+          price, risk, heat: 20, scam: true, kind: 'forgery',
           why: 'squints through a loupe. "The holo pattern is… wrong. Is this fake?"',
           onSale: () => { S.forgeries = S.forgeries.filter(x => x.id !== f.id); },
         });
@@ -257,7 +280,7 @@ function offersFor(c) {
       let risk = comboRisk(reseals.map(p => resealRisk(base * 0.35, p.crimp, p.short)));
       if (duds >= 8) risk = comboRisk([risk, 0.3]); // a box with no hits looks searched
       out.push({ label, sub: scam ? `${reseals.length} resealed, ${duds} duds` : 'heavy & unweighed first', price, risk, scam, run: () => attempt(c, {
-        price, risk, heat: 30, scam,
+        price, risk, heat: 30, scam, kind: 'reseal',
         why: 'rips the box live on stream. Chat: "BRO THESE ARE RESEALED 💀" — a YouTube exposé drops.',
         onSale: () => {
           removePacks(chosen);
@@ -273,14 +296,28 @@ function offersFor(c) {
   return out;
 }
 
-async function serve(c, offer) {
+async function serve(c, offer, haggling = false) {
   if (busy) return;
   busy = true;
   try {
+    haggleMult = 1;
+    if (haggling) {
+      const limit = haggleLimit(c.arch, hasUpg('hustle1') ? 0.1 : 0);
+      const m = await haggle({ name: c.name, emoji: ARCH[c.arch].emoji, price: offer.price, limit });
+      if (m === null) {
+        S.queue.shift();
+        addHeat(1);
+        toast(`${c.name} walks out muttering about rip-off merchants.`, 'bad');
+        changed();
+        return;
+      }
+      haggleMult = m;
+    }
     const done = await offer.run();
     if (done && S.queue[0] === c) S.queue.shift();
     changed();
   } finally {
+    haggleMult = 1;
     busy = false;
   }
 }
@@ -293,11 +330,13 @@ function counterCard(c, a) {
     const rt = o.riskText || riskLabel(o.risk);
     const rc = o.risk < 0 ? 'mid' : riskClass(o.risk);
     const price = o.price === 0 ? '—' : o.price < 0 ? `pay ${money(-o.price)}` : money(o.price);
-    return `<button class="offer ${o.scam ? 'scam' : ''}" ${o.disabled ? 'disabled' : ''} data-a="${a(() => serve(c, o))}">
+    // Positive-price sales (not the swap, not tutorial customers) can be haggled up.
+    const canHaggle = o.price > 0 && o.risk >= 0 && !o.disabled && !c.tut;
+    return `<div class="offer-row"><button class="offer ${o.scam ? 'scam' : ''}" ${o.disabled ? 'disabled' : ''} data-a="${a(() => serve(c, o))}">
       <span class="ol">${o.label}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</span>
       <span class="op">${price}</span>
       <span class="or r-${rc}">${rt}</span>
-    </button>`;
+    </button>${canHaggle ? `<button class="haggle" aria-label="Haggle the price" data-a="${a(() => serve(c, o, true))}">🤝</button>` : ''}</div>`;
   }).join('');
   return `<div class="card counter">
     <div class="cust">
@@ -390,6 +429,7 @@ function render() {
   }
   html += incomingHtml();
   html += stockHtml();
+  html += binderHtml(a);
   html += supplierHtml(a);
   html += `<div class="thumb-bar"><button class="btn big danger" data-a="${a(() => bus.emit('endday'))}">🔒 Close Shop · End Day ${S.day}</button></div>`;
   root.innerHTML = html;
