@@ -7,12 +7,13 @@ export function resealRisk(base, q, short = false) {
 }
 
 // Chance a forgery is spotted. Grades follow the GDD quality tiers.
-export function forgeryRisk(base, grade) {
+export function forgeryRisk(base, grade, slab = false) {
   if (grade < 65) return 1; // immediate failure
   let m;
   if (grade >= 90) m = 0.12; // passes elite collector & grading house inspection
   else m = (base >= 0.5 ? 1 : 0.5) * (1.4 - ((grade - 65) / 25) * 0.6); // fools casuals, collectors suspicious
   if (hasUpg('hustle3') && base >= 0.5) m *= 0.5;
+  if (slab) m *= 0.4; // a graded slab carries the grader's authority
   return clamp(base * m, 0.005, 0.97);
 }
 
@@ -33,3 +34,9 @@ export function riskLabel(p) {
   return `${Math.max(1, Math.round(p * 100))}% risk`;
 }
 export const riskClass = p => (p <= 0 ? 'none' : p < 0.1 ? 'low' : p < 0.35 ? 'mid' : 'high');
+
+// Chance an expert notices a trimmed card. Over 1mm total trim it's measurably undersized.
+export function trimRisk(base, card) {
+  if (!card.trimmed) return 0;
+  return clamp((card.trimmed > 1 ? 0.6 : 0.2) * Math.min(1, base / 0.65), 0, 0.9);
+}

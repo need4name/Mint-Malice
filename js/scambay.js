@@ -10,13 +10,16 @@ import {
   uid, pick, rand, roll, clamp, unlockedSets,
 } from './state.js';
 import { SETS, RARITY } from './data.js';
-import { toast, modal, haptic, money, esc, actions, bindActions } from './ui.js';
+import { toast, haptic, money, esc, actions, bindActions } from './ui.js';
 import { sfx } from './audio.js';
-import { resealRisk, forgeryRisk, comboRisk, riskLabel, riskClass } from './rules.js';
+import { resealRisk, forgeryRisk, comboRisk, riskLabel, riskClass, trimRisk } from './rules.js';
+import { stagePhoto } from './games/photo.js';
+import { snipe } from './games/snipe.js';
+import { streamBreak } from './games/stream.js';
+import { inspectReturn } from './games/inspect.js';
 
 const SELLERS = ['grandpas_attic_finds', 'NotResealed99', 'xX_sealed_Xx', 'trust_me_bro_tcg', 'estate_sale_steve',
   'mintcondition_mo', 'card_kingdom_uk', 'lowballer_lou', 'fastship_frank', 'vintage_vault', 'flip_city', 'dad_cleared_loft'];
-const VIEWERS = ['ripz4days', 'holo_hank', 'mintyfresh', 'packgoblin', 'lurker42', 'chase_card_chad', 'salty_sam', 'bigspender'];
 
 const TIERS = {
   quick: { label: 'Quick sale', mult: 0.8 },
@@ -73,6 +76,7 @@ function genLot() {
   lot.price = Math.max(1, Math.round(lot.value * rand(0.2, 0.4)));
   lot.bids = Math.floor(rand(0, 9));
   lot.bin = roll(0.4) ? Math.round(lot.value * rand(0.95, 1.25)) : null;
+  lot.live = roll(0.3); // ends live: won by sniping, not by max bid
   return { id: uid(), seller, myMax: 0, ...lot };
 }
 
@@ -134,20 +138,25 @@ function marketValue(li) {
   if (li.kind === 'pack') return SETS[li.item.set].packPrice * 1.25;
   return worth(li.item);
 }
-const sellChance = li => clamp(1.6 - li.ask / marketValue(li), 0.05, 0.95) * Math.pow(W().rating / 100, 1.5) * (heatTier() >= 2 ? 0.85 : 1);
+const photoOf = li => li.photo ?? 0.5;
+const sellChance = li => clamp(clamp(1.6 - li.ask / marketValue(li), 0.05, 0.95) * Math.pow(W().rating / 100, 1.5) * (heatTier() >= 2 ? 0.85 : 1) * (0.75 + 0.5 * photoOf(li)), 0.02, 0.97);
 
 function scamRisk(li) {
-  if (li.kind === 'forgery') return forgeryRisk(0.35, li.item.grade);
-  if (li.kind === 'pack' && li.item.resealed) return resealRisk(0.12, li.item.crimp, li.item.short);
-  return 0;
+  let r = 0;
+  if (li.kind === 'forgery') r = forgeryRisk(0.35, li.item.grade, li.item.slab);
+  if (li.kind === 'single') r = trimRisk(0.35, li.item);
+  if (li.kind === 'pack' && li.item.resealed) r = resealRisk(0.12, li.item.crimp, li.item.short);
+  return clamp(r * (1.3 - 0.6 * photoOf(li)), 0, 0.97); // a clever photo hides flaws
 }
 
-function list(kind, item, tier) {
+async function list(kind, item, tier) {
   if (W().listings.length >= slots()) { toast(`All ${slots()} listing slots are full. Higher store levels add slots.`, 'bad'); return; }
+  // cards get a staged photo; packs just get a snap
+  const photo = kind === 'pack' ? 0.5 : await stagePhoto(item, kind === 'forgery');
   if (kind === 'single') S.singles = S.singles.filter(x => x.id !== item.id);
   if (kind === 'forgery') S.forgeries = S.forgeries.filter(x => x.id !== item.id);
   if (kind === 'pack') removePacks([item]);
-  const li = { id: uid(), kind, item, tier, days: 0 };
+  const li = { id: uid(), kind, item, tier, days: 0, photo };
   li.ask = Math.max(1, Math.round(marketValue(li) * TIERS[tier].mult));
   W().listings.push(li);
   sfx.tap();
@@ -200,6 +209,8 @@ export function closeDay() {
         continue;
       }
       const got = earn(li.ask * (1 - FEE), { online: true });
+      // some buyers try a return scam: they send back a different card
+      if (li.kind === 'single' && roll(0.15)) S.returns.push({ id: uid(), card: li.item, refund: got, fake: roll(0.6), day: S.day + 1 });
       W().rating = Math.min(100, W().rating + 1);
       if (scamRisk(li) > 0) { S.scams++; S.today.scams++; S.totals.scams++; }
       lines.push({ good: true, text: `Sold ${name} for ${money(li.ask)} (you got ${money(got)} after fees${heatTier() >= 2 ? ' and holds' : ''}).` });
@@ -213,6 +224,40 @@ export function closeDay() {
 }
 
 // ---- Live breaks ------------------------------------------------------------------
+async function goLiveAuction(l) {
+  const r = await snipe({ title: lotLabel(l), price: l.price, rival: l.rival, step: inc(l) });
+  W().lots = W().lots.filter(x => x !== l);
+  if (r.won) {
+    if (spend(r.price)) { ship(l, r.price); toast(`Sniped ${lotLabel(l)} for ${money(r.price)}! Ships in 1–2 days.`, 'good'); }
+    else toast('You won but can’t pay. The seller relists it.', 'bad');
+  } else toast(`Lost ${lotLabel(l)} at ${money(r.price)}.`, 'bad');
+  changed();
+}
+
+// Morning: inspect returned cards. Returns report lines.
+export async function handleReturns() {
+  const due = S.returns.filter(r => r.day <= S.day);
+  S.returns = S.returns.filter(r => r.day > S.day);
+  const lines = [];
+  for (const r of due) {
+    const verdict = await inspectReturn(r.card, r.fake);
+    if (verdict === 'accept') {
+      S.cash -= r.refund;
+      if (r.fake) { S.forgeries.push({ ...r.card, id: uid(), grade: 35, name: `${r.card.name} (swapped fake)` }); lines.push({ bad: true, text: `You accepted a swapped fake for ${r.card.name}. Refunded ${money(r.refund)}.` }); }
+      else { S.singles.push(r.card); lines.push({ text: `${r.card.name} returned. Refunded ${money(r.refund)}.` }); }
+    } else if (r.fake) {
+      lines.push({ good: true, text: `Return scam blocked on ${r.card.name}. You keep the money.` });
+    } else {
+      S.cash -= r.refund;
+      S.singles.push(r.card);
+      W().rating = Math.max(0, W().rating - 6);
+      lines.push({ bad: true, text: `You rejected a genuine return of ${r.card.name}. ScamBay sided with the buyer: refunded, rating −6%.` });
+    }
+  }
+  if (due.length) changed();
+  return lines;
+}
+
 async function goLive(set, spiked) {
   if (streaming) return;
   if (W().streamed) { toast('You’ve already streamed today. Come back tomorrow.', 'bad'); return; }
@@ -228,38 +273,12 @@ async function goLive(set, spiked) {
   const hits = chosen.filter(p => !p.opened && p.hit);
   let risk = comboRisk(reseals.map(p => resealRisk(0.3, p.crimp, p.short)));
   if (!hits.length && chosen.length >= 6) risk = comboRisk([risk, 0.25]);
-  const busted = roll(risk);
-  const viewers = Math.floor(rand(40, 120) * S.level * (W().rating / 100));
-
-  const body = document.createElement('div');
-  body.className = 'stream';
-  body.innerHTML = `<div class="stream-top"><span class="live">● LIVE</span><span class="viewers">👀 ${viewers}</span></div><div class="chat"></div>`;
-  const chat = body.querySelector('.chat');
-  const say = (who, msg, cls = '') => {
-    const el = document.createElement('div');
-    el.className = `msg ${cls}`;
-    el.innerHTML = `<b>${esc(who)}</b> ${esc(msg)}`;
-    chat.appendChild(el);
-    chat.scrollTop = chat.scrollHeight;
-  };
-  const timers = [];
-  chosen.forEach((p, i) => timers.push(setTimeout(() => {
-    if (!p.opened && p.hit) { say(pick(VIEWERS), `HOLY ${rollCard(set).name.toUpperCase()}!!! 🔥🔥`, 'hot'); sfx.success(); }
-    else say(pick(VIEWERS), pick(['meh', 'next pack', 'rip it faster', 'W break', 'L pack', 'commons again lol', 'nice centering tho']));
-  }, 400 + i * 350)));
-  timers.push(setTimeout(() => {
-    if (busted) {
-      say('salty_sam', 'wait… that seal looks crimped 👀', 'bad');
-      say('chase_card_chad', 'BRO THESE ARE RESEALED 🚨 clipping this', 'bad');
-      sfx.fail();
-    } else say('bigspender', 'best break this week 💸', 'hot');
-  }, 400 + chosen.length * 350 + 200));
-
-  await modal({ title: `📱 ScamBay Live — ${SETS[set].name} break`, body, buttons: [{ label: 'End stream', value: true }] });
-  timers.forEach(clearTimeout);
+  // chat suspicion scales with how risky the packs really are
+  const susRate = clamp(0.04 + risk * 0.35, 0.04, 0.4);
+  const res = await streamBreak({ set, packs: chosen, susRate });
   streaming = false;
-  const audience = clamp(viewers / 150, 0.5, 1.5);
-  if (busted) {
+  const audience = clamp(res.viewers / 120, 0.5, 1.5) * (0.8 + res.hype / 100 * 0.6);
+  if (res.busted) {
     const got = earn(chosen.length * price * 0.4 * audience, { online: true });
     addHeat(30);
     W().rating = Math.max(0, W().rating - 10);
@@ -290,13 +309,13 @@ function buyHtml(a) {
     const next = l.price + inc(l);
     return `<div class="post">
       <div class="post-head"><span class="pfp">${l.kind === 'single' ? l.card.art : l.kind === 'box' ? set.mascot : l.kind === 'commons' ? '🃏' : '📄'}</span>
-        <div class="grow"><b>${esc(l.seller.name)}</b><small>${stars(l.seller.stars)} (${l.seller.feedback}) · closes tonight</small></div></div>
+        <div class="grow"><b>${esc(l.seller.name)}</b><small>${stars(l.seller.stars)} (${l.seller.feedback}) · ${l.live ? '🔴 ends live, join any time today' : 'closes tonight'}</small></div></div>
       <p>${esc(l.title)}</p>
       <small>${ref} · ${status}</small>
       <div class="post-foot">
         <div class="bid ${winning(l) ? 'mine' : ''}">${money(l.price)}<small>current bid</small></div>
-        <button class="btn small" data-a="${a(() => bid(l, next))}">Bid ${money(next)}</button>
-        <button class="btn small" data-a="${a(() => bid(l, Math.round(next * 1.25)))}">Max ${money(Math.round(next * 1.25))}</button>
+        ${l.live ? `<button class="btn small danger" data-a="${a(() => goLiveAuction(l))}">🔴 Join live ending</button>` : `<button class="btn small" data-a="${a(() => bid(l, next))}">Bid ${money(next)}</button>
+        <button class="btn small" data-a="${a(() => bid(l, Math.round(next * 1.25)))}">Max ${money(Math.round(next * 1.25))}</button>`}
         ${l.bin ? `<button class="btn small ghost" data-a="${a(() => buyNow(l))}">Buy ${money(l.bin)}</button>` : ''}
       </div>
     </div>`;
@@ -318,8 +337,8 @@ function sellHtml(a) {
     rows.push(`<div class="listing col"><div class="row"><div class="grow"><b>${esc(name)}</b><small>${esc(sub)}</small></div>
       <span class="or r-${riskClass(risk)}">${riskLabel(risk)}</span></div><div class="ctrl-row tiers">${btns}</div></div>`);
   };
-  for (const s of S.singles) add('single', s, s.name, `${RARITY[s.rarity]?.label || 'Holo'} · genuine`, 0);
-  for (const f of S.forgeries) add('forgery', f, f.name, `forgery · grade ${f.grade}%`, forgeryRisk(0.35, f.grade));
+  for (const s of S.singles) add('single', s, s.name, `${RARITY[s.rarity]?.label || 'Holo'} · ${s.trimmed ? 'trimmed' : 'genuine'}`, trimRisk(0.35, s));
+  for (const f of S.forgeries) add('forgery', f, f.name, `forgery · grade ${f.grade}%${f.slab ? ' · slabbed' : ''}`, forgeryRisk(0.35, f.grade, f.slab));
   for (const set of Object.keys(SETS)) {
     const res = packsOf(set, 'reseal').sort((x, y) => y.crimp - x.crimp)[0];
     if (res) add('pack', res, `${SETS[set].name} pack`, `resealed · crimp ${res.crimp}% · ${packsOf(set, 'reseal').length} in stock`, resealRisk(0.12, res.crimp, res.short));

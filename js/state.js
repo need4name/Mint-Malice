@@ -37,6 +37,9 @@ function fresh() {
     deliveries: [], // { id, arrive (day), label, kind: box|commons|blanks|single|fake, set, qty, stripped, card }
     web: { lots: [], listings: [], rating: 100, streamed: false, day: 0 },
     news: [], // overnight headlines for the morning report
+    grading: [], // { card, kind: single|forgery, back (day), tier }
+    returns: [], // ScamBay returns to inspect: { card, refund, fake, day }
+    daily: { day: 0, review: false, bribe: false }, // once-a-day Underground services
   };
 }
 
@@ -96,15 +99,27 @@ export function rollCard(set, rarity = null) {
   const pool = def.cards.filter(c => c.rarity === tier);
   const base = weightedPick(pool, c => 1 / c.value);
   const variant = def.variants.find(v => Math.random() < v.odds) || null;
+  const off = () => Math.round(clamp(50 + (Math.random() < 0.5 ? -1 : 1) * Math.abs(gauss()) * 8, 30, 70));
   return {
     id: uid(), set, art: base.art, rarity: tier,
     name: variant ? `${base.name} (${variant.name})` : base.name,
     value: Math.round(base.value * (variant ? variant.mult : 1)),
+    lr: off(), tb: off(), // centering: left and top border share, 50 = perfect
   };
 }
 
+// Centering: the worse axis decides. Raw cards are priced by centering; graded slabs by grade.
+export const worstShare = c => Math.max(c.lr, 100 - c.lr, c.tb, 100 - c.tb);
+export function centerMult(c) {
+  if (c.lr == null) return 1;
+  const w = worstShare(c);
+  return w <= 55 ? 1.15 : w <= 60 ? 1 : w <= 70 ? 0.85 : 0.7;
+}
+const GRADE_MULT = { 10: 3, 9: 1.8, 8: 1.2, 7: 1, 6: 0.9, 5: 0.8 };
+export const gradeMult = c => (c.gsa === 'A' ? 0.5 : c.gsa ? GRADE_MULT[c.gsa] || 0.8 : centerMult(c));
+
 // What a card fetches today: its base value moved by the set's market.
-export const worth = card => Math.round(card.value * (S.market?.[card.set] ?? 1));
+export const worth = card => Math.round(card.value * (S.market?.[card.set] ?? 1) * gradeMult(card));
 
 export function driftMarket() {
   const moves = [];

@@ -44,6 +44,27 @@ New players get a short briefing and a 10-step guided tutorial that walks throug
 | Y-U-No-Pay | 18.62g | 18.98g | 18% |
 | Tragic: The Hoarding | 26.10g | 26.36g | 14% |
 
+**Minigames**
+
+| Where | Minigame | What it does |
+| --- | --- | --- |
+| Counter | 🤝 Haggle | Tap 🤝 next to an offer, then drag the price dial while the customer's face reacts. Push too far and they walk. |
+| Counter | 🎲 Kid's pick | A kid insists on choosing their own pack. Swap packs while they look away to keep your heavy pack out of their hands. |
+| Counter | 🗣️ Talk your way out | When a customer catches you: three timed accusations and a suspicion meter. Contradict your own story and it backfires. |
+| Counter | 🥁 Distraction | A rhythm game before a sleight-of-hand swap. Good timing widens the swap wheel's green zone. |
+| Bench | 👆 Feel | Rub a sealed pack to feel for the foil ridge. Quicker than the scale, but less reliable. |
+| Bench | ♨️ Steam open | Hold to heat the kettle and keep it in the green band. A clean job adds a bonus to the reseal. |
+| Bench | ⚖️ Balance | An emptied pack is a card's weight light. Drag shims onto it until it matches the set's dud weight within ±0.05g. |
+| Binder | ✂️ Trim | Shave borders to improve centering and value. Trim over 1mm and the card is undersized, which experts notice. |
+| Binder | 🏅 Grading | Send cards to the grader (results come back after 1–3 days). Graders catch trims; sneak a fake in for a slab. |
+| ScamBay | 📸 Photo | Position the lamp for the listing photo. A good photo sells faster and hides a fake's flaws. |
+| ScamBay | ⏱️ Live ending | Some lots end live: last bid wins, and rivals can't answer a bid made in the final half-second. |
+| ScamBay | 🔴 Stream | Tap ❤️ on hype, answer questions, and delete suspicious comments before they spread. |
+| ScamBay | 🔍 Returns | A buyer sends a card back. Spot the differences and decide whether it's really yours. |
+| Raid | 🚨 Cleanup | Trading Standards are at the door. Drag the evidence into hiding spots before time runs out. |
+| Underground | 💵 Bribe | Read the inspector's face and offer the right amount for −25% Heat. Once a day. |
+| Underground | ✍️ Shill reviews | Build a believable fake 5-star review from word tiles for up to −10% Heat. Once a day. |
+
 **Forgery grade** = Alignment × 0.40 + Texture × 0.35 + Art Skill × 0.25. That total is then multiplied by an aging-match factor (a mismatch of more than ±8 wear points costs up to 40%).
 At ≥ 90% a forgery fools grading houses. From 65% to 89% it fools parents and casual buyers. Below 65% it fails instantly, triggering a chargeback and +25% heat.
 

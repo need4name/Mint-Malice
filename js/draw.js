@@ -108,7 +108,7 @@ export function drawCard(ctx, cx, cy, w, h, card, o = {}) {
   ctx.save();
   ctx.globalAlpha = o.alpha ?? 1;
   if (o.glow) { ctx.shadowColor = o.glow; ctx.shadowBlur = 26; }
-  ctx.fillStyle = o.blank ? '#f4efe1' : set.frame;
+  ctx.fillStyle = o.blank ? '#f4efe1' : (o.frame || set.frame);
   rr(ctx, x, y, w, h, r);
   ctx.fill();
   ctx.shadowBlur = 0;

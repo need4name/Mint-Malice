@@ -7,6 +7,20 @@ import { bench, drawPack, drawCard, rr, text } from './draw.js';
 import { toast, haptic, money, actions, bindActions } from './ui.js';
 import { sfx } from './audio.js';
 import { Forge } from './forge.js';
+import { feelPack } from './games/feel.js';
+import { steamOpen } from './games/steam.js';
+import { balance } from './games/shim.js';
+
+// Balance an open pack's weight with the shim minigame.
+async function balancePack(pk) {
+  const r = await balance(pk);
+  if (r.cancelled) return;
+  S.commons -= r.commonsUsed;
+  pk.w = r.w;
+  pk.short = !r.ok;
+  changed();
+  toast(r.ok ? 'Weight matches a dud. It’ll pass a collector’s scale.' : 'Still off weight. Collectors with scales may notice.', r.ok ? 'good' : 'bad');
+}
 
 let canvas, ctx, wrap, ctrlEl, hintEl, tabsEl, input;
 let dpr = 1, raf = 0, visible = false, cur = 'weigh';
@@ -272,8 +286,13 @@ class Weigh {
 
   controls(a) {
     const heavy = S.packs.filter(p => packCat(p) === 'heavy').length;
-    return `<div class="ctrl-row"><span class="muted small">Duds sell as sealed packs with zero risk. Heavy packs hide the hits.</span>
-      <button class="btn small" ${heavy ? '' : 'disabled'} data-a="${a(() => select('crack'))}">Crack heavy (${heavy}) ✂️</button></div>`;
+    const next = S.packs.find(p => packCat(p) === 'sealed');
+    return `<div class="ctrl-row"><span class="muted small grow">Or feel for the foil: faster, less reliable.</span>
+      <button class="btn small" ${next ? '' : 'disabled'} data-a="${a(async () => {
+        const verdict = await feelPack(next);
+        if (verdict) { next.sorted = verdict; changed(); }
+      })}">👆 Feel</button>
+      <button class="btn small" ${heavy ? '' : 'disabled'} data-a="${a(() => select('crack'))}">Crack (${heavy}) ✂️</button></div>`;
   }
 }
 
@@ -317,7 +336,7 @@ class Crack {
   }
   up(p) { if (this.stroke?.id === p.id) this.stroke = null; }
 
-  open() {
+  open(steam = 0) {
     const pk = this.current();
     this.stroke = null;
     if (!pk) return;
@@ -331,14 +350,16 @@ class Crack {
       S.singles.push(card);
       pk.hit = false;
       const { light, heavy } = SETS[pk.set].weights;
-      if (S.commons > 0) { S.commons--; pk.w = light + gauss() * 0.012; } // bulk common swapped in
-      else { pk.short = true; pk.w = light - (heavy - light) * 2; }
+      // the foil card is gone: the pack is now a card's weight light until it's balanced
+      pk.w = heavy - (1.74 + Math.random() * 0.12) - (heavy - light);
+      pk.short = true;
       setTimeout(() => sfx.success(), 250);
-      toast(`${RARITY[card.rarity].label.toUpperCase()}! ${card.name} (${money(worth(card))}) stashed${pk.short ? ' — no commons to swap in, pack is light!' : '. Bulk common swapped in.'}`, 'good');
+      toast(`${RARITY[card.rarity].label.toUpperCase()}! ${card.name} (${money(worth(card))}) stashed. The pack is now light: balance it before resealing.`, 'good');
     } else {
       card = { set: pk.set, name: 'Bulk Commons', value: 0, art: '🃏' };
       toast(pk.sorted === 'heavy' ? 'Dud! The scale lied… just commons.' : 'Just commons. Off to the crimper.', 'info');
     }
+    if (steam) pk.steam = steam;
     this.reveal = { id: pk.id, card, hit, t: performance.now() };
     changed();
   }
@@ -393,15 +414,23 @@ class Crack {
   controls(a) {
     if (this.reveal) {
       const n = S.packs.filter(p => packCat(p) === 'open').length;
+      const pk = find(this.reveal.id);
       return `<div class="ctrl-row">
-        <button class="btn" data-a="${a(() => { this.reveal = null; this.enter(); api.refresh(); })}">Next pack ▶</button>
-        <button class="btn mint" data-a="${a(() => { this.reveal = null; select('crimp'); })}">Reseal it 🔥 (${n})</button></div>`;
+        <button class="btn small" data-a="${a(() => { this.reveal = null; this.enter(); api.refresh(); })}">Next ▶</button>
+        ${pk?.short ? `<button class="btn small" data-a="${a(() => balancePack(pk))}">⚖️ Balance</button>` : ''}
+        <button class="btn small mint" data-a="${a(() => { this.reveal = null; select('crimp'); })}">Reseal 🔥 (${n})</button></div>`;
     }
     const f = (id, label) => {
       const n = this.pool(id).length;
       return `<button class="${this.filter === id ? 'on' : ''}" data-a="${a(() => { this.filter = id; api.refresh(); })}">${label} ${n}</button>`;
     };
-    return `<div class="seg small">${f('heavy', '💎 Heavy')}${f('unsorted', '📦 Unweighed')}${f('dud', '🗑️ Duds')}</div>`;
+    const cur = this.current();
+    return `<div class="ctrl-col"><div class="seg small">${f('heavy', '💎 Heavy')}${f('unsorted', '📦 Unweighed')}${f('dud', '🗑️ Duds')}</div>
+      ${cur ? `<button class="btn small" data-a="${a(async () => {
+        const r = await steamOpen(cur);
+        if (r.opened && this.current() === cur) { this.open(r.bonus); toast(`Steamed open cleanly: +${r.bonus} on the reseal.`, 'good'); }
+        else if (!r.opened) toast('The glue held. Try again or tear it.', 'info');
+      })}">♨️ Steam it open instead</button>` : ''}</div>`;
   }
 }
 
@@ -476,7 +505,7 @@ class Crimp {
     if (!pk) return;
     const good = j.seg.filter(s => s === 'good').length;
     const fast = j.seg.filter(s => s === 'fast').length;
-    const q = Math.round(((good + fast * 0.3) / NSEG) * 100);
+    const q = Math.min(100, Math.round(((good + fast * 0.3) / NSEG) * 100) + (find(j.id)?.steam || 0));
     pk.resealed = true;
     pk.crimp = q;
     this.done = { id: pk.id, q, seg: j.seg.slice() };
@@ -557,7 +586,9 @@ class Crimp {
       return `<div class="ctrl-row"><span class="muted small">Resealed packs sell from the counter, ScamBay or live breaks.</span>
         <button class="btn" data-a="${a(() => { this.done = null; api.refresh(); })}">${n ? `Next pack ▶ (${n})` : 'Done ✓'}</button></div>`;
     }
-    return `<div class="ctrl-row"><span class="muted small">${n} pack${n === 1 ? '' : 's'} awaiting reseal${hasUpg('equip2') ? ' · Thermal Crimp Sealer fitted' : ''}.</span>
+    const pk = this.queue()[0];
+    return `<div class="ctrl-row"><span class="muted small">${n} pack${n === 1 ? '' : 's'} awaiting reseal${hasUpg('equip2') ? ' · Thermal Crimp Sealer fitted' : ''}${pk?.short ? ' · this one is light' : ''}.</span>
+      ${pk?.short ? `<button class="btn small" data-a="${a(() => balancePack(pk))}">⚖️ Balance</button>` : ''}
       <button class="btn small" data-a="${a(() => select('crack'))}">✂️ Crack more</button></div>`;
   }
 }

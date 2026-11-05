@@ -1,11 +1,13 @@
 // Boot, navigation hubs, HUD, day cycle, heat escalation and raids.
-import { S, bus, load, newGame, wipe, save, changed, heatTier, hasUpg, blankDay, driftMarket, receiveDeliveries } from './state.js';
+import { S, bus, load, newGame, wipe, save, changed, heatTier, hasUpg, blankDay, driftMarket, receiveDeliveries, uid } from './state.js';
 import { SETS, SET_ORDER } from './data.js';
 import { $, toast, modal, haptic, money, esc } from './ui.js';
 import { sfx, unlockAudio, setMuted } from './audio.js';
 import { initShop, showShop, genCustomers } from './shop.js';
 import { initBench, showBench, hideBench, selectStation } from './bench.js';
-import { initWeb, showWeb, newDayLots, closeDay } from './scambay.js';
+import { initWeb, showWeb, newDayLots, closeDay, handleReturns } from './scambay.js';
+import { receiveGrading } from './binder.js';
+import { raidCleanup } from './games/raid.js';
 import { initTree, showTree } from './tree.js';
 import { initTutorial, intro, help, tutorialPending, resumeTutorial } from './tutorial.js';
 
@@ -90,15 +92,33 @@ async function raid() {
     changed();
     await modal({ title, body: '<p>“It was all Kevin!” Your rogue stockroom employee is led away in cuffs, clutching the forgery kit.</p><p>All forgeries confiscated. Heat reset to 40%. Kevin will not be doing that again.</p>', cls: 'bad' });
   } else {
-    const fine = Math.max(1500, Math.round(S.cash * 0.5));
-    const seized = S.forgeries.length + S.packs.filter(p => p.resealed).length;
-    S.forgeries = [];
-    S.packs = S.packs.filter(p => !p.resealed);
+    // Build the evidence: forgeries one by one, resealed packs in bundles of three, plus the tools.
+    const items = [];
+    S.forgeries.slice(0, 8).forEach(f => items.push({ id: uid(), icon: '🖨️', label: 'Fake card', forgeries: [f.id], packs: [] }));
+    if (S.forgeries.length > 8) items.push({ id: uid(), icon: '🗂️', label: `${S.forgeries.length - 8} fakes`, forgeries: S.forgeries.slice(8).map(f => f.id), packs: [] });
+    const reseals = S.packs.filter(p => p.resealed);
+    for (let i = 0; i < reseals.length; i += 3) items.push({ id: uid(), icon: '📦', label: `${Math.min(3, reseals.length - i)} resealed`, forgeries: [], packs: reseals.slice(i, i + 3).map(p => p.id) });
+    items.push({ id: uid(), icon: '🔥', label: 'Crimp iron', tool: true, forgeries: [], packs: [] });
+    items.push({ id: uid(), icon: '⚖️', label: 'Scales', tool: true, forgeries: [], packs: [] });
+    const spots = [{ label: 'Under counter', icon: '🗄️', cap: 3 }, { label: 'Toilet cistern', icon: '🚽', cap: 2 }, { label: 'Ceiling tile', icon: '🔲', cap: 2 }];
+    const left = new Set(await raidCleanup(items, spots));
+    const found = items.filter(i => left.has(i.id));
+    const fIds = new Set(found.flatMap(i => i.forgeries));
+    const pIds = new Set(found.flatMap(i => i.packs));
+    S.forgeries = S.forgeries.filter(f => !fIds.has(f.id));
+    S.packs = S.packs.filter(p => !pIds.has(p.id));
+    const fine = found.length ? 300 + found.reduce((t, i) => t + (i.tool ? 400 : 150 * Math.max(1, i.forgeries.length + Math.ceil(i.packs.length / 3))), 0) : 0;
     if (S.cash >= fine) {
       S.cash -= fine;
-      S.heat = 60;
+      S.heat = found.length ? 65 : 55;
       changed();
-      await modal({ title, body: `<p>Officers seize ${seized} counterfeit items and slap you with a <b>${money(fine)}</b> fine.</p><p>Heat drops to 60%. They’ll be back.</p>`, cls: 'bad' });
+      await modal({
+        title,
+        body: found.length
+          ? `<p>Officers find ${found.length} item${found.length > 1 ? 's' : ''} in plain sight: ${found.map(i => esc(i.label)).join(', ')}.</p><p>Seized, plus a <b>${money(fine)}</b> fine. Heat drops to 65%.</p>`
+          : '<p>They turn the shop upside down and find… nothing. A very ordinary card shop. Heat drops to 55%.</p>',
+        cls: 'bad',
+      });
     } else {
       raiding = false;
       await gameOver(`Trading Standards fined you ${money(fine)} and you couldn’t pay. The shop is boarded up.`);
@@ -135,11 +155,14 @@ function restart() {
 }
 
 // Morning report: what arrived and how prices moved.
-async function morning(arrived, moves) {
-  if (!arrived.length && !moves.length) return;
+async function morning(arrived, moves, graded) {
+  const returns = await handleReturns();
+  graded = [...graded, ...returns];
+  if (!arrived.length && !moves.length && !graded.length) return;
   await modal({
     title: `☀️ Day ${S.day}`,
     body: `${arrived.length ? `<h4 class="report-h">🚚 Delivered this morning</h4><ul class="report">${arrived.map(d => `<li>${esc(d.label)}</li>`).join('')}</ul>` : ''}
+      ${graded.length ? `<h4 class="report-h">🏅 Grading & returns</h4><ul class="report">${graded.map(l => `<li class="${l.good ? 'good' : l.bad ? 'bad' : ''}">${esc(l.text)}</li>`).join('')}</ul>` : ''}
       ${moves.length ? `<h4 class="report-h">📈 Market news</h4><ul class="report">${moves.map(m => `<li class="${m.pct > 0 ? 'good' : 'bad'}">${SETS[m.set].name} cards ${m.pct > 0 ? 'up' : 'down'} ${Math.abs(m.pct)}% overnight</li>`).join('')}</ul>` : ''}
       <p class="muted small">${S.queue.length} customers are waiting. Fresh ScamBay lots are up.</p>`,
     buttons: [{ label: 'Open the shop', value: true, kind: 'mint' }],
@@ -195,10 +218,11 @@ async function endDay() {
   S.today = blankDay();
   const moves = driftMarket();
   const arrived = receiveDeliveries();
+  const graded = receiveGrading();
   S.queue = genCustomers();
   newDayLots();
   changed();
-  await morning(arrived, moves);
+  await morning(arrived, moves, graded);
   go('shop', true);
 }
 

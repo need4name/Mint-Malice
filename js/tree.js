@@ -1,5 +1,7 @@
 // 🌳 Underground Tree: upgrade branches, PR cover-ups, corrupt lawyer, settings.
-import { S, bus, changed, spend, addHeat, hasUpg, heatTier } from './state.js';
+import { S, bus, changed, spend, addHeat, hasUpg, heatTier, rand } from './state.js';
+import { bribe } from './games/bribe.js';
+import { writeReview } from './games/reviews.js';
 import { UPGRADES } from './data.js';
 import { toast, modal, money, esc, actions, bindActions } from './ui.js';
 import { sfx, setMuted } from './audio.js';
@@ -48,9 +50,54 @@ function branchHtml(b, a) {
   }).join('')}</div>`;
 }
 
+// Once-a-day services reset each morning.
+const daily = () => { if (S.daily.day !== S.day) S.daily = { day: S.day, review: false, bribe: false }; return S.daily; };
+
+async function doBribe() {
+  const lo = Math.round(150 * S.level * rand(0.8, 1.2));
+  const hi = Math.round(lo * (hasUpg('hustle3') ? 1.7 : 1.35));
+  daily().bribe = true;
+  const r = await bribe({ lo, hi, cap: S.cash });
+  if (r.result === 'accepted') {
+    spend(r.amount);
+    addHeat(-25);
+    toast(`The inspector pockets ${money(r.amount)} and “loses” your file. -25% heat`, 'good');
+  } else if (r.result === 'insulted') {
+    addHeat(10);
+    toast('“Is that all I’m worth?” The inspector storms off. +10% heat', 'bad');
+  } else if (r.result === 'suspicious') {
+    addHeat(15);
+    toast('“That’s a lot of money for nothing…” Now they’re suspicious. +15% heat', 'bad');
+  } else {
+    daily().bribe = false;
+  }
+  changed();
+}
+
+async function doReview() {
+  const score = await writeReview({ pro: hasUpg('hustle2') });
+  if (score === null) return;
+  daily().review = true;
+  const cut = Math.round(2 + score * 8);
+  addHeat(-cut);
+  toast(score > 0.6 ? `Convincing review! Locals believe it. -${cut}% heat` : score > 0.3 ? `It’s… fine. -${cut}% heat` : `Obviously fake. Barely helps. -${cut}% heat`, score > 0.3 ? 'good' : 'bad');
+  changed();
+}
+
 function servicesHtml(a) {
   const tier = heatTier();
+  const d = daily();
   return `<div class="card">
+      <h4>✍️ Shill reviews</h4>
+      <p class="muted small">Write a fake 5-star review. A convincing one cools heat by up to 10%. Once a day.</p>
+      <button class="btn" ${d.review ? 'disabled' : ''} data-a="${a(doReview)}">${d.review ? 'Posted today ✓' : 'Write a review'}</button>
+    </div>
+    <div class="card">
+      <h4>💵 Bribe the inspector</h4>
+      <p class="muted small">Slip the local Trading Standards inspector an envelope. Get the amount right for −25% heat. Once a day, only when you’re on their radar (heat 26%+).</p>
+      <button class="btn" ${d.bribe || S.heat < 26 ? 'disabled' : ''} data-a="${a(doBribe)}">${d.bribe ? 'Done today ✓' : S.heat < 26 ? 'Not on their radar' : 'Arrange a meeting'}</button>
+    </div>
+    <div class="card">
       <h4>📰 PR Cover-up</h4>
       <p class="muted small">Bribe a local blogger & bury the reviews. −20% heat.${tier >= 3 ? ' <b class="bad">Severe tier: heat won’t cool overnight without this.</b>' : ''}</p>
       <button class="btn" ${S.heat > 0 ? '' : 'disabled'} data-a="${a(async () => {
