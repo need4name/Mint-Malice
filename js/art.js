@@ -195,12 +195,12 @@ const BODIES = {
     line(ctx, [[50, 44], [50, 92]], 'rgba(27,20,32,.3)', 1.6);
     if (has(P, 'tie')) X.tie(ctx, 50, 48);
     if (has(P, 'ears')) { poly(ctx, [[34, 30], [22, 22], [36, 36]], skin); poly(ctx, [[66, 30], [78, 22], [64, 36]], skin); }
+    if (has(P, 'hood')) path(ctx, P.c1, () => { ctx.ellipse(50, 30, 21, 21, 0, Math.PI * 0.85, Math.PI * 2.15); ctx.lineTo(62, 48); ctx.lineTo(38, 48); ctx.closePath(); });
     ell(ctx, 50, 32, 14, 14, skin);
     if (has(P, 'beard')) poly(ctx, [[38, 34], [62, 34], [50, 56]], '#e8e8e8');
     eyes(ctx, 44, 56, 31, 3.2, P.e);
     if (has(P, 'glasses')) X.glasses(ctx, 44, 56, 31);
     if (has(P, 'hat')) X.hat(ctx, P, 50, 22, 0.9);
-    if (has(P, 'hood')) path(ctx, P.c1, () => { ctx.ellipse(50, 28, 18, 18, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.lineTo(66, 40); ctx.lineTo(34, 40); ctx.closePath(); });
     if (has(P, 'halo')) X.halo(ctx, 50, 12);
     if (has(P, 'staff')) X.staff(ctx, 76, 90, P.c3 || '#c792ff');
     if (has(P, 'sword')) { line(ctx, [[24, 86], [20, 40]], '#d8dde6', 4); line(ctx, [[16, 76], [30, 74]], '#a07a3a', 4); }
@@ -311,6 +311,74 @@ const BODIES = {
     line(ctx, [[46, 18], [50, 12], [54, 18]], P.c1, 4);
     eyes(ctx, 43, 57, 35, 4, P.e);
     if (P.e === 'glow') { ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = P.c2; ctx.lineWidth = 2; for (let r = 30; r < 46; r += 7) { ctx.beginPath(); ctx.arc(50, 50, r, -0.4, Math.PI + 0.4, true); ctx.stroke(); } ctx.restore(); }
+  },
+  suit(ctx, P) {
+    const skin = P.skin || '#f2c9a0';
+    rect(ctx, 38, 82, 10, 12, '#1b1420', 2); rect(ctx, 52, 82, 10, 12, '#1b1420', 2);
+    path(ctx, shade(ctx, 50, 66, 26, P.c1, P.c2), () => { ctx.moveTo(28, 86); ctx.lineTo(30, 52); ctx.quadraticCurveTo(50, 42, 70, 52); ctx.lineTo(72, 86); ctx.closePath(); });
+    poly(ctx, [[44, 48], [50, 62], [56, 48]], '#fff', false);
+    X.tie(ctx, 50, 50);
+    line(ctx, [[44, 48], [48, 70]], 'rgba(27,20,32,.5)', 1.4); line(ctx, [[56, 48], [52, 70]], 'rgba(27,20,32,.5)', 1.4);
+    line(ctx, [[30, 56], [20, 76]], P.c1, 7); line(ctx, [[70, 56], [80, 72]], P.c1, 7);
+    ell(ctx, 50, 32, 13, 14, skin);
+    path(ctx, P.c3 || '#2a1a10', () => { ctx.ellipse(50, 24, 14, 8, 0, Math.PI, 0); ctx.quadraticCurveTo(62, 22, 64, 30); ctx.lineTo(36, 24); ctx.closePath(); });
+    eyes(ctx, 45, 55, 32, 2.8, P.e);
+    smile(ctx, 50, 39, 4);
+    if (has(P, 'glasses')) { rect(ctx, 39, 28, 9, 6, '#111', 2); rect(ctx, 52, 28, 9, 6, '#111', 2); line(ctx, [[48, 30], [52, 30]]); }
+    if (has(P, 'phone')) { rect(ctx, 74, 60, 10, 16, '#111', 2); rect(ctx, 76, 62, 6, 11, '#3dd2ff', 1); }
+    if (has(P, 'briefcase')) { rect(ctx, 10, 72, 20, 14, '#7a4a2a', 2); line(ctx, [[16, 72], [16, 68], [24, 68], [24, 72]]); }
+    if (has(P, 'tophat')) { rect(ctx, 40, 4, 20, 16, '#111', 2); rect(ctx, 34, 18, 32, 4, '#111', 2); }
+  },
+  boxtower(ctx, P) {
+    const boxes = [[20, 70, 30, 22], [50, 70, 30, 22], [34, 48, 30, 22], [22, 26, 26, 22], [50, 30, 28, 18]];
+    boxes.forEach(([x, y, w, h], i) => {
+      rect(ctx, x, y, w, h, i % 2 ? P.c1 : P.c2, 2);
+      ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(x + 3, y + 3, w - 6, 4);
+      if (has(P, 'tape')) { ctx.fillStyle = 'rgba(255,230,140,.8)'; ctx.fillRect(x + w / 2 - 2, y, 4, h); }
+    });
+    eyes(ctx, 42, 56, 58, 3.5, P.e);
+    smile(ctx, 49, 64, 3);
+  },
+  phone(ctx, P) {
+    if (has(P, 'ringlight')) { ctx.save(); ctx.shadowColor = '#fff'; ctx.shadowBlur = 12; ctx.beginPath(); ctx.arc(50, 44, 40, 0, Math.PI * 2); ctx.strokeStyle = '#fffbe8'; ctx.lineWidth = 5; ctx.stroke(); ctx.restore(); }
+    rect(ctx, 30, 12, 40, 72, '#1b1420', 7);
+    const g = ctx.createLinearGradient(32, 16, 68, 80); g.addColorStop(0, P.c1); g.addColorStop(1, P.c2);
+    rect(ctx, 33, 18, 34, 60, g, 4);
+    eyes(ctx, 43, 57, 40, 4, P.e);
+    smile(ctx, 50, 52, 5);
+    ell(ctx, 50, 15, 3, 1.2, '#444', false);
+    if (has(P, 'heart')) { ctx.fillStyle = '#ff3d6e'; ctx.font = '12px serif'; ctx.textAlign = 'center'; ctx.fillText('♥ 99+', 50, 70); }
+    if (has(P, 'bell')) { ell(ctx, 66, 20, 7, 7, '#ff3d6e'); ctx.fillStyle = '#fff'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('!', 66, 23); }
+    line(ctx, [[34, 86], [30, 94]], INK, 3); line(ctx, [[66, 86], [70, 94]], INK, 3);
+  },
+  coin(ctx, P) {
+    if (has(P, 'rocket')) { poly(ctx, [[74, 30], [92, 8], [86, 32]], '#ff3d6e'); X.flame(ctx, 76, 40, 0.5); }
+    ell(ctx, 50, 54, 32, 32, shade(ctx, 50, 54, 32, P.c1, P.c2));
+    ell(ctx, 50, 54, 25, 25, null);
+    eyes(ctx, 42, 58, 48, 4.5, P.e);
+    smile(ctx, 50, 62, 7);
+    if (has(P, 'chart')) line(ctx, [[18, 92], [30, 84], [40, 88], [52, 70], [62, 76], [74, 60], [84, 94]], '#ff3d6e', 3);
+  },
+  slab(ctx, P) {
+    rect(ctx, 24, 6, 52, 88, 'rgba(210,225,245,.55)', 5);
+    rect(ctx, 28, 10, 44, 14, '#fff', 2);
+    ctx.fillStyle = '#b01020'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('GSA', 31, 19);
+    ctx.fillStyle = INK; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('10', 69, 21);
+    rect(ctx, 32, 30, 36, 58, P.c2, 2);
+    ell(ctx, 50, 62, 12, 11, shade(ctx, 50, 62, 12, P.c1, '#fff'));
+    eyes(ctx, 46, 54, 60, 2.4, P.e);
+    if (has(P, 'crown')) X.crown(ctx, 50, 50, 0.6);
+    ctx.save(); ctx.globalAlpha = 0.5; line(ctx, [[30, 12], [44, 88]], '#fff', 2); ctx.restore();
+  },
+  vending(ctx, P) {
+    rect(ctx, 22, 8, 56, 84, shade(ctx, 50, 50, 40, P.c1, P.c2), 5);
+    rect(ctx, 28, 14, 32, 56, '#bfe8ff', 2);
+    for (let r = 0; r < 4; r++) line(ctx, [[28, 28 + r * 14], [60, 28 + r * 14]], '#7a8a99', 1.6);
+    if (!has(P, 'empty')) for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) rect(ctx, 31 + c * 10, 18 + r * 14, 7, 9, ['#ff3d9a', '#ffd23d', '#3dd2ff'][(r + c) % 3], 1);
+    rect(ctx, 64, 20, 10, 14, '#222', 2);
+    rect(ctx, 30, 76, 28, 10, '#111', 2);
+    eyes(ctx, 64, 72, 46, 2.6, P.e);
+    smile(ctx, 68, 54, 3);
   },
   // ---- objects ----
   mirror(ctx, P) {

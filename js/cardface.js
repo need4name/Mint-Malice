@@ -100,7 +100,7 @@ function chokeFace(ctx, W, H, card, def, set, variant) {
   // header
   const name = displayName(card, def);
   if (variant === 'Misprint') txt(ctx, name, 8.6 * u, 10.6 * u, 7 * u, { color: '#3dd2ff', maxW: 58 * u });
-  txt(ctx, name, 8 * u, 10 * u, 7 * u, { maxW: 58 * u });
+  txt(ctx, name, 8 * u, 10 * u, 7 * u, { maxW: 54 * u });
   txt(ctx, `${def?.hp ?? 30} HP`, 82 * u, 10 * u, 5 * u, { color: '#d0021b', align: 'right', weight: 800 });
   ctx.fillStyle = t.color; ctx.beginPath(); ctx.arc(89 * u, 10 * u, 4 * u, 0, 7); ctx.fill();
   txt(ctx, t.icon, 89 * u, 10.3 * u, 4.5 * u, { align: 'center', font: 'serif' });
@@ -132,7 +132,7 @@ function chokeFace(ctx, W, H, card, def, set, variant) {
   if (variant === 'Error Stamp') { ctx.save(); ctx.translate(76 * u, 112 * u); ctx.rotate(Math.PI); txt(ctx, `${set.code} ${set.code}`, 0, 0, 5 * u, { align: 'center', color: 'rgba(208,2,27,.75)', weight: 900 }); ctx.restore(); }
 }
 
-const race = n => (/Dragon|Lizard/.test(n) ? 'Dragon' : /Wizard|Magician/.test(n) ? 'Spellcaster' : /Guardian/.test(n) ? 'Warrior' : 'Fiend');
+const race = n => (/Dragon|Lizard/.test(n) ? 'Dragon' : /Wizard|Magician|Necromancer/.test(n) ? 'Spellcaster' : /Guardian|Knight/.test(n) ? 'Warrior' : /Titan/.test(n) ? 'Machine' : /Creep/.test(n) ? 'Insect' : 'Fiend');
 
 // ---- Y-U-No-Pay -----------------------------------------------------------------------------
 function yunoFace(ctx, W, H, card, def, set, variant) {
