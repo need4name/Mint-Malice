@@ -551,3 +551,20 @@ h4 { font-size: 15px; margin-bottom: 6px; }
 .binder li { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
 .binder li.fake { border-color: rgba(255, 61, 110, .3); }
 .binder .btn.small { padding: 6px 8px; min-height: 36px; font-size: 12px; }
+
+/* ---- Cards: thumbnails, viewer, index ---------------------------------------------- */
+.thumb { display: block; width: 44px; height: auto; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.pfp .thumb { width: 30px; }
+.pfp:has(.thumb) { background: none; border-radius: 4px; }
+.thumb-btn { flex: none; border: 0; background: none; padding: 0; }
+.binder-head { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 8px; gap: 8px; }
+.binder-head h3 { margin: 0; }
+.card-view { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.card-view img { width: min(260px, 70vw); height: auto; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.card-view .stats { width: 100%; }
+.dex { display: flex; flex-direction: column; gap: 10px; }
+.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; }
+.dex-grid figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.dex-grid img { width: 72px; height: auto; border-radius: 5px; box-shadow: 0 3px 8px rgba(0,0,0,.4); }
+.dex-grid figcaption { font-size: 10px; text-align: center; line-height: 1.2; color: var(--text); }
+.dex-grid .unknown figcaption { color: var(--muted); }

@@ -14,6 +14,7 @@ import { toast, haptic, money, esc, actions, bindActions } from './ui.js';
 import { sfx } from './audio.js';
 import { resealRisk, forgeryRisk, comboRisk, riskLabel, riskClass, trimRisk } from './rules.js';
 import { stagePhoto } from './games/photo.js';
+import { cardImage } from './cardface.js';
 import { snipe } from './games/snipe.js';
 import { streamBreak } from './games/stream.js';
 import { inspectReturn } from './games/inspect.js';
@@ -308,7 +309,7 @@ function buyHtml(a) {
     const status = winning(l) ? `<b class="good">Winning · your max ${money(l.myMax)}</b>` : l.myMax ? '<b class="bad">Outbid</b>' : `${l.bids} bids`;
     const next = l.price + inc(l);
     return `<div class="post">
-      <div class="post-head"><span class="pfp">${l.kind === 'single' ? l.card.art : l.kind === 'box' ? set.mascot : l.kind === 'commons' ? '🃏' : '📄'}</span>
+      <div class="post-head"><span class="pfp">${l.kind === 'single' ? `<img class="thumb" src="${cardImage(l.card, 40)}" alt="">` : l.kind === 'box' ? set.mascot : l.kind === 'commons' ? '🃏' : '📄'}</span>
         <div class="grow"><b>${esc(l.seller.name)}</b><small>${stars(l.seller.stars)} (${l.seller.feedback}) · ${l.live ? '🔴 ends live, join any time today' : 'closes tonight'}</small></div></div>
       <p>${esc(l.title)}</p>
       <small>${ref} · ${status}</small>
